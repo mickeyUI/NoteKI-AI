@@ -2,6 +2,8 @@ import Cards from "../components/cards"
 import { useEffect, useState } from "react"
 function Main() {
     const [notes, setNotes] = useState([]);
+    const [question, setQuestion] = useState("");
+    const [response, setResponse] = useState("");
 
     const fetchNotes = async () => {
       const res = await fetch("http://127.0.0.1:8000/GetNotes", {
@@ -31,11 +33,18 @@ function Main() {
                 {notes.map((note, index) => (
                     <Cards key={index} title={note.title} para={note.content} />
                 ))}
+
+                <div className=" bg-black col-span-3 h-60">
+                      <p className="text-2xl p-5 font-extralight">{response}</p>
+                </div>
                 
             </div>
             <div className="flex justify-center gap-5 p-4">
-            <input className="bg-gray-500 rounded-2xl w-full p-2 text-2xl" type="text" placeholder="ask any question about your notes"/>
-            <button className="text-white border-2 rounded-2xl bg-blue-700 pl-9 pr-9 hover:border-blue-800">ASK</button>
+            <input className="bg-gray-500 rounded-2xl w-full p-2 text-2xl" type="text" placeholder="ask any question about your notes"
+            value={question}
+            onChange={e => setQuestion(e.target.value)}/>
+            <button className="text-white border-2 rounded-2xl bg-blue-700 pl-9 pr-9 hover:border-blue-800"
+            onClick={}>ASK</button>
             </div>
         </div>
         </div>

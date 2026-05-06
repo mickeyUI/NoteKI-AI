@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from Schemas import Register, Login, CreateNote
+from sqlalchemy import text
+import requests
+from Schemas import Register, Login, CreateNote, Question
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note
@@ -98,6 +100,33 @@ def DeleteNote(noteID: str, userID = Depends(get_current_user), db = Depends(get
     db.commit()
     return {"delete": "sucessful"}
     
+@app.get("/question/{question}")
+def Ask(question: str, userID = Depends(get_current_user), db = Depends(get_db)):
+    embeded = get_embedding(question)
+    results = db.execute(
+    text("""
+        SELECT title, content
+        FROM notes
+        WHERE user_id = :user_id
+        ORDER BY embedding <=> CAST(:embedding AS vector)
+        LIMIT 3
+    """),
+    {
+        "user_id": str(userID),
+        "embedding": str(embeded)
+    }).fetchall()
+    if not(results):
+        return "you have no notes that match you question"
+    lst_notes = [{"title": result.title, "content": result.content} for result in results]
+    context = "\n\n".join([f"{n['title']}: {n['content']}" for n in lst_notes])
+    prompt = f"""Answer the question using only the notes below. 
+    If the answer is not in the notes, say "I don't have notes on that."
+    NOTES:{context}
+    QUESTION: {question}"""
+
+    response = requests.post("http://localhost:11434/api/generate", json={"model": "qwen2.5-coder:7b", "prompt": prompt, "stream": False})
+    print(response.json())
+    return {"answer": response.json()["response"]}
 
    
 

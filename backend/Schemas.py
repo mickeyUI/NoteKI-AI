@@ -12,3 +12,6 @@ class Register(BaseModel):
 class CreateNote(BaseModel):
     title: str
     content: str
+
+class Question(BaseModel):
+    question: str
