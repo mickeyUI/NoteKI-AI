@@ -14,11 +14,36 @@ function Main() {
       });
       const data = await res.json();
       if (res.ok) {
-      setNotes(data);
-    } else {
-      alert(data.detail);
-    }
+        setNotes(data);
+      } else {
+        alert(data.detail);
+      }
     };
+      const fetchResponse = async () => {
+
+  setResponse("");
+
+  const res = await fetch("http://127.0.0.1:8000/question", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      question: question,
+    }),
+  });
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let done = false;
+  while (!done) {
+    const { value, done: doneReading } = await reader.read();
+    done = doneReading;
+    const chunk = decoder.decode(value);
+    setResponse(prev => prev + chunk);
+  }
+};
+    
+
     useEffect(() => {
         fetchNotes();
     }, [])
@@ -40,11 +65,16 @@ function Main() {
                 
             </div>
             <div className="flex justify-center gap-5 p-4">
-            <input className="bg-gray-500 rounded-2xl w-full p-2 text-2xl" type="text" placeholder="ask any question about your notes"
+            <input className="bg-gray-500 rounded-2xl w-full p-2 text-2xl" 
+            type="text" 
+            placeholder="ask any question about your notes"
             value={question}
             onChange={e => setQuestion(e.target.value)}/>
             <button className="text-white border-2 rounded-2xl bg-blue-700 pl-9 pr-9 hover:border-blue-800"
-            onClick={}>ASK</button>
+            onClick={() => {
+              fetchResponse();
+              setQuestion("");
+            }}>ASK</button>
             </div>
         </div>
         </div>

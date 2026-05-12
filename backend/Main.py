@@ -6,7 +6,8 @@ from Schemas import Register, Login, CreateNote, Question
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note
-from LLM import get_embedding
+from LLM import get_embedding, generate
+from fastapi.responses import StreamingResponse
 
 app = FastAPI()
 
@@ -100,16 +101,16 @@ def DeleteNote(noteID: str, userID = Depends(get_current_user), db = Depends(get
     db.commit()
     return {"delete": "sucessful"}
     
-@app.get("/question/{question}")
-def Ask(question: str, userID = Depends(get_current_user), db = Depends(get_db)):
-    embeded = get_embedding(question)
+@app.post("/question")
+def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get_db)):
+    embeded = get_embedding(question.question)
     results = db.execute(
     text("""
         SELECT title, content
         FROM notes
         WHERE user_id = :user_id
         ORDER BY embedding <=> CAST(:embedding AS vector)
-        LIMIT 3
+        LIMIT 5
     """),
     {
         "user_id": str(userID),
@@ -119,14 +120,31 @@ def Ask(question: str, userID = Depends(get_current_user), db = Depends(get_db))
         return "you have no notes that match you question"
     lst_notes = [{"title": result.title, "content": result.content} for result in results]
     context = "\n\n".join([f"{n['title']}: {n['content']}" for n in lst_notes])
-    prompt = f"""Answer the question using only the notes below. 
-    If the answer is not in the notes, say "I don't have notes on that."
-    NOTES:{context}
-    QUESTION: {question}"""
+    prompt = f"""You are an AI note management assistant.
 
-    response = requests.post("http://localhost:11434/api/generate", json={"model": "qwen2.5-coder:7b", "prompt": prompt, "stream": False})
-    print(response.json())
-    return {"answer": response.json()["response"]}
+Your task is to answer questions using ONLY the information provided in the NOTES section.
+
+STRICT RULES:
+0. make responses short and concise.
+1. Do NOT use outside knowledge.
+2. Do NOT guess or assume missing information.
+3. Do NOT invent explanations not explicitly supported by the notes.
+4. If the notes are incomplete, ambiguous, or insufficient leave them out of the answer or:
+   - ask the user for clarification, OR
+   - say exactly what information is missing.
+5. If the answer does not exist in the notes, reply:
+   "I don't have notes on that."
+6. Prefer quoting or closely paraphrasing the notes.
+7. Be clear, concise, and accurate.
+8. Never answer beyond the scope of the provided notes.
+9. If multiple interpretations are possible, ask which one the user means."
+    NOTES:{context}
+    QUESTION: {question.question}"""
+
+    return StreamingResponse(generate(context), media_type="text/plain")
+     
+
+    
 
    
 
