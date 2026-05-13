@@ -54,7 +54,7 @@ function Main() {
             <h1 className="text-white text-2xl">Notes</h1>
 
             </div>
-            <div className="bg-gray-900 grid grid-cols-3 gap-5 p-5 rounded-2xl h-[540px] overflow-scroll">
+            <div className="bg-gray-900 grid grid-cols-3 gap-5 p-5 rounded-2xl h-135 overflow-scroll">
                 {notes.map((note, index) => (
                     <Cards key={index} title={note.title} para={note.content} />
                 ))}

@@ -1,6 +1,10 @@
+import os
 import requests
 import json
+from groq import Groq
+from dotenv import load_dotenv
 
+load_dotenv()
 
 
 def get_embedding(text: str):
@@ -14,17 +18,13 @@ def get_embedding(text: str):
     return response.json()["embedding"]
 
 def generate(prompt: str):
-    response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "qwen2.5-coder:7b",
-                "prompt": prompt,
-                "stream": True
-            },
-            stream=True
-        )
-    for line in response.iter_lines():
-        if line:
-            data = json.loads(line)
-            chunk = data.get("response", "")
-            yield chunk
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True
+    )
+    for chunk in response:
+        content = chunk.choices[0].delta.content
+        if content:
+            yield content

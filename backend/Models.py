@@ -1,8 +1,9 @@
 from DB import Base
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import Column, Integer, ForeignKey, String
+from sqlalchemy import Column, Integer, ForeignKey, String, Date, DateTime
 from pgvector.sqlalchemy import Vector
 import uuid
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -17,3 +18,7 @@ class Note(Base):
     title = Column(String, nullable = False)
     content = Column(String, nullable = False)
     embedding = Column(Vector(768), nullable=True)
+    tags = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default = datetime.utcnow() , nullable=False)
+    updated_at = Column(DateTime, default = datetime.utcnow() , nullable=False)

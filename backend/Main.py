@@ -83,7 +83,7 @@ def GetNotes(userID = Depends(get_current_user), db = Depends(get_db)):
 
 @app.put("/UpdateNote/{noteID}")
 def UpdateNote(newNote: CreateNote,noteID: str, userID = Depends(get_current_user), db = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID)
+    note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID).first()
     if not(note):
         raise HTTPException(status_code = 404, detail= "note not found")
     note.title = newNote.title
@@ -92,7 +92,7 @@ def UpdateNote(newNote: CreateNote,noteID: str, userID = Depends(get_current_use
     db.commit()
     return {"edit": "sucessful"}
 
-@app.delete("/DelNote/{noteID}", response_model= CreateNote)
+@app.delete("/DelNote/{noteID}")
 def DeleteNote(noteID: str, userID = Depends(get_current_user), db = Depends(get_db)):
     note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID).first()
     if not note:
@@ -120,29 +120,45 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
         return "you have no notes that match you question"
     lst_notes = [{"title": result.title, "content": result.content} for result in results]
     context = "\n\n".join([f"{n['title']}: {n['content']}" for n in lst_notes])
-    prompt = f"""You are an AI note management assistant.
+    prompt = f"""You are an expert assistant. I will give you a note (saved information) followed by a question or request.
 
-Your task is to answer questions using ONLY the information provided in the NOTES section.
+=== NOTE START ===
+{context}
+=== NOTE END ===
 
-STRICT RULES:
-0. make responses short and concise.
-1. Do NOT use outside knowledge.
-2. Do NOT guess or assume missing information.
-3. Do NOT invent explanations not explicitly supported by the notes.
-4. If the notes are incomplete, ambiguous, or insufficient leave them out of the answer or:
-   - ask the user for clarification, OR
-   - say exactly what information is missing.
-5. If the answer does not exist in the notes, reply:
-   "I don't have notes on that."
-6. Prefer quoting or closely paraphrasing the notes.
-7. Be clear, concise, and accurate.
-8. Never answer beyond the scope of the provided notes.
-9. If multiple interpretations are possible, ask which one the user means."
-    NOTES:{context}
-    QUESTION: {question.question}"""
+Question:{question.question}
 
-    return StreamingResponse(generate(context), media_type="text/plain")
+Instructions:
+- Base your answers strictly on the note above. Do not add external knowledge unless the user explicitly asks for it.
+- If the note doesn't contain enough information to answer, say so clearly.
+- Be concise, precise, and well-structured.
+- Use bullet points, tables, or numbered lists when they improve clarity.
+- Think step-by-step before answering.
+- you dont have to use all the notes only the ones that is related to the question."""
+
+    return StreamingResponse(generate(prompt), media_type="text/plain")
      
+@app.post("/search", response_model = list[str])
+def Search(query: Question, userID = Depends(get_current_user), db = Depends(get_db)):
+    if not query:
+        raise HTTPException(status_code=404, detail="No query provided")
+    embeded = get_embedding(query.question)
+    results = db.execute(
+    text("""
+        SELECT title, content
+        FROM notes
+        WHERE user_id = :user_id
+        ORDER BY embedding <=> CAST(:embedding AS vector)
+        LIMIT 5
+    """),
+    {
+        "user_id": str(userID),
+        "embedding": str(embeded)
+    }).fetchall()
+    if not results:
+        raise HTTPException(status_code=404, detail="No results found")
+    return results
+
 
     
 
