@@ -1,11 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-import requests
-from Schemas import Register, Login, CreateNote, Question
+from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateChat, CreateMessage
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
-from Models import User, Note
+from Models import User, Note, Converstions, Messages
 from LLM import get_embedding, generate
 from fastapi.responses import StreamingResponse
 
@@ -19,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-"""def get_current_user(authorization: str = Header(None)):
+def get_current_user(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="No token provided")
 
@@ -32,10 +31,7 @@ app.add_middleware(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return payload["user_id"]"""
-
-def get_current_user():
-    return "9406351d-ddcd-42f5-85e1-7c86270225b3"
+    return payload["user_id"]
 
 @app.post("/Register")
 def RegisterUser(register: Register, db = Depends(get_db)):
@@ -61,12 +57,12 @@ def LoginUser(login: Login, db = Depends(get_db)):
 @app.post("/AddNote")
 def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
     embeded = get_embedding(note.content)
-    newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded )
+    newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url )
     db.add(newNote)
     db.commit()
     return {"Note": "Added"}
 
-@app.get("/GetNote/{noteID}", response_model= CreateNote)
+@app.get("/GetNote/{noteID}", response_model= ReturnNotes)
 def GetNote(noteID: str, userID = Depends(get_current_user), db = Depends(get_db)):
     note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID).first()
     if not note:
@@ -74,7 +70,7 @@ def GetNote(noteID: str, userID = Depends(get_current_user), db = Depends(get_db
     return note
 
 
-@app.get("/GetNotes", response_model= list[CreateNote])
+@app.get("/GetNotes", response_model= list[ReturnNotes])
 def GetNotes(userID = Depends(get_current_user), db = Depends(get_db)):
     notes = db.query(Note).filter(Note.user_id == userID).all()
     if not(notes):
@@ -157,8 +153,36 @@ def Search(query: Question, userID = Depends(get_current_user), db = Depends(get
     }).fetchall()
     if not results:
         raise HTTPException(status_code=404, detail="No results found")
+    
     return results
 
+@app.get("/Chats")
+def GetChats(userID = Depends(get_current_user), db = Depends(get_db)):
+    chats = db.query(Converstions).filter(Converstions.user_id == userID).all()
+    if not(chats):
+        raise HTTPException(status_code= 404, detail= "no chats found")
+    return chats
+
+@app.get("/Messages/{MsID}")
+def GetMessages(MsID: str, db = Depends(get_db)):
+    messages = db.query(Messages).filter(Messages.conversation_id == MsID).all()
+    if not(messages):
+        raise HTTPException(status_code= 404, detail= "no messages found")
+    return messages
+                
+@app.post("/AddChat")
+def AddChat(chat: CreateChat, userID = Depends(get_current_user), db = Depends(get_db)):
+    newChat = Converstions(user_id = userID, title = chat.title)
+    db.add(newChat)
+    db.commit()
+    return {"Chat": "Added"}
+
+@app.post("/AddMessage")
+def AddMsg(msg: CreateMessage , db = Depends(get_db)):
+    newMsg = Messages(conversation_id = msg.conversation_id, role = msg.role, content = msg.content)
+    db.add(newMsg)
+    db.commit()
+    return {"Message": "Added"}
 
     
 
