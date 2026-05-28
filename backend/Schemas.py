@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+from uuid import UUID
 
 class Login(BaseModel):
     email: str
@@ -11,12 +12,13 @@ class Register(BaseModel):
     password: str
 
 class CreateNote(BaseModel):
-    title: str
+    title: Optional[str] = "New Note"
     content: str
     tags: str
     source_url: str
 
 class ReturnNotes(BaseModel):
+    id: UUID
     title: str
     content: str
     tags: str
