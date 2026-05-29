@@ -36,3 +36,13 @@ class CreateMessage(BaseModel):
     conversation_id: str
     role: str
     content: str
+
+class ChangeID(BaseModel):
+    id: UUID
+
+class EditNote(BaseModel):
+    id: UUID
+    title: str
+    content: str
+    tags: str
+    source_url: str

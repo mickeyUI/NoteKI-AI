@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateChat, CreateMessage
+from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateChat, CreateMessage, ChangeID, EditNote
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
@@ -33,6 +33,9 @@ def get_current_user(authorization: str = Header(None)):
 
     return payload["user_id"]
 
+"""def get_current_user():
+    return "9406351d-ddcd-42f5-85e1-7c86270225b3"
+"""
 @app.post("/Register")
 def RegisterUser(register: Register, db = Depends(get_db)):
     user = db.query(User).filter(User.email == register.email).first()
@@ -77,20 +80,22 @@ def GetNotes(userID = Depends(get_current_user), db = Depends(get_db)):
         raise HTTPException(status_code= 404, detail= "no notes found")
     return notes
 
-@app.put("/UpdateNote/{noteID}")
-def UpdateNote(newNote: CreateNote,noteID: str, userID = Depends(get_current_user), db = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID).first()
+@app.put("/UpdateNote")
+def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == newNote.id, Note.user_id == userID).first()
     if not(note):
         raise HTTPException(status_code = 404, detail= "note not found")
     note.title = newNote.title
     note.content = newNote.content
+    note.tags = newNote.tags
+    note.source_url = newNote.source_url
     note.embedding = get_embedding(newNote.content)
     db.commit()
     return {"edit": "sucessful"}
 
-@app.delete("/DelNote/{noteID}")
-def DeleteNote(noteID: str, userID = Depends(get_current_user), db = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID).first()
+@app.delete("/DelNote")
+def DeleteNote(noteID: ChangeID, userID = Depends(get_current_user), db = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == noteID.id, Note.user_id == userID).first()
     if not note:
         raise HTTPException(status_code= 404, detail= "note not found")
     db.delete(note)

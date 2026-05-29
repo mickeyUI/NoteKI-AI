@@ -62,7 +62,22 @@ export const api = {
         source_url: note.source_url || ""
       })
     }),
-
+  deleteNote: (noteid) => 
+    apiRequest('/DelNote', {
+      method: 'DELETE',
+      body: JSON.stringify({id: noteid})
+    }),
+  editNote: (note) => 
+  apiRequest('/UpdateNote', {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: note.id,
+          title: note.title,
+          content: note.content,
+          tags: note.tags,
+          source_url: note.sourceUrl || "",
+        })
+    }),
   getChats: () => 
     apiRequest('/Chats', {
       method: 'GET'

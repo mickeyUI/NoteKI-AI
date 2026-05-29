@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import NotesFeed from './components/NotesFeed';
 import AIAnswerPanel from './components/AIAnswerPanel';
 import ChatInput from './components/ChatInput';
+import ViewNote from './components/ViewNote';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -14,7 +15,10 @@ export default function App() {
   
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [isNoteViewOpen, setNoteViewOpen] = useState(false);
   const [noteCreationLoading, setNoteCreationLoading] = useState(false);
+  const [noteViewLoading, setViewLoading] = useState(false);
+  const [noteViewId, setNoteViewId] = useState('');
   const [pinnedIds, setPinnedIds] = useState(() => {
     const saved = localStorage.getItem('pinned_notes');
     return saved ? JSON.parse(saved) : [];
@@ -134,6 +138,34 @@ export default function App() {
     }
   };
 
+  const handleEditNote = async (noteData) => {
+    try {
+      setViewLoading(true)
+      const newNote = await api.editNote(noteData);
+      // Optimistically append note if backend returns it, else refetch list
+      if (newNote && newNote.id) {
+        const modified = notes.filter(note => note.id != newNote.id);
+        setNotes([newNote, ...modified])
+      } else {
+        await api.getNotes().then(setNotes);
+      }
+      setNoteViewOpen(false);
+    } catch (err) {
+      alert("Failed to create note: " + err.message);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteID) => {
+    const res = await api.deleteNote(noteID);
+    if (res) {
+      const newNote = notes.filter( note => note.id != noteID);
+      setNotes(newNote);
+    } else {
+      alert("error")
+    }
+  }
   const togglePin = (noteId) => {
     const nextPinned = pinnedIds.includes(noteId)
       ? pinnedIds.filter(id => id !== noteId)
@@ -290,7 +322,10 @@ export default function App() {
             onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
             isSearchActive={isSearchActive}
             formatDate={formatDate}
-          />
+            handleDeleteNote= {handleDeleteNote}
+            setNoteViewId = {setNoteViewId}
+            setNoteViewOpen= {setNoteViewOpen}
+            />
 
           {/* AI Answer Panel - Slide out layout */}
           <AIAnswerPanel
@@ -300,7 +335,7 @@ export default function App() {
             isStreaming={isStreaming}
             citations={citations}
             onClose={handleDismissSearch}
-          />
+            />
         </div>
 
         {/* AI Search/Chat Input (Bottom Fixed) */}
@@ -309,7 +344,7 @@ export default function App() {
           onChange={setInputVal}
           isStreaming={isStreaming}
           onSubmit={handleSearchSubmit}
-        />
+          />
       </main>
 
       {/* Note Modal Dialog */}
@@ -318,6 +353,16 @@ export default function App() {
         onClose={() => setIsNoteModalOpen(false)}
         onSubmit={handleCreateNote}
         loading={noteCreationLoading}
+        />
+      <ViewNote
+        isOpen={isNoteViewOpen}
+        setView ={setNoteViewOpen}
+        loading={noteViewLoading}
+        noteid= {noteViewId}
+        setid= {setNoteViewId}
+        notes= {notes}
+        onSubmit= {handleEditNote}
+        
       />
     </div>
   );
