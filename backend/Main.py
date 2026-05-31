@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateChat, CreateMessage, ChangeID, EditNote
+from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, EditNote
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_current_user(authorization: str = Header(None)):
+"""def get_current_user(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="No token provided")
 
@@ -31,11 +31,11 @@ def get_current_user(authorization: str = Header(None)):
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return payload["user_id"]
+    return payload["user_id"]"""
 
-"""def get_current_user():
+def get_current_user():
     return "9406351d-ddcd-42f5-85e1-7c86270225b3"
-"""
+
 @app.post("/Register")
 def RegisterUser(register: Register, db = Depends(get_db)):
     user = db.query(User).filter(User.email == register.email).first()
@@ -94,7 +94,7 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     return {"edit": "sucessful"}
 
 @app.delete("/DelNote")
-def DeleteNote(noteID: ChangeID, userID = Depends(get_current_user), db = Depends(get_db)):
+def DeleteNote(noteID: ReciveID, userID = Depends(get_current_user), db = Depends(get_db)):
     note = db.query(Note).filter(Note.id == noteID.id, Note.user_id == userID).first()
     if not note:
         raise HTTPException(status_code= 404, detail= "note not found")
@@ -168,9 +168,9 @@ def GetChats(userID = Depends(get_current_user), db = Depends(get_db)):
         raise HTTPException(status_code= 404, detail= "no chats found")
     return chats
 
-@app.get("/Messages/{MsID}")
-def GetMessages(MsID: str, db = Depends(get_db)):
-    messages = db.query(Messages).filter(Messages.conversation_id == MsID).all()
+@app.post("/Messages")
+def GetMessages(convoID: ReciveID, userID = Depends(get_current_user) ,db = Depends(get_db)):
+    messages = db.query(Messages).all()
     if not(messages):
         raise HTTPException(status_code= 404, detail= "no messages found")
     return messages
@@ -180,14 +180,16 @@ def AddChat(chat: CreateChat, userID = Depends(get_current_user), db = Depends(g
     newChat = Converstions(user_id = userID, title = chat.title)
     db.add(newChat)
     db.commit()
-    return {"Chat": "Added"}
+    db.refresh(newChat)
+    return {"id": newChat.id}
 
 @app.post("/AddMessage")
 def AddMsg(msg: CreateMessage , db = Depends(get_db)):
     newMsg = Messages(conversation_id = msg.conversation_id, role = msg.role, content = msg.content)
     db.add(newMsg)
     db.commit()
-    return {"Message": "Added"}
+    db.refresh(newMsg)
+    return newMsg
 
     
 

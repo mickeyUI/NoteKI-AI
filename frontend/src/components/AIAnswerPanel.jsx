@@ -1,14 +1,44 @@
-import React from 'react';
+import React, { useEffect, useState, useRef} from 'react';
 import { X, RefreshCw, Globe } from 'lucide-react';
+import { api } from '../services/api';
 
-export default function AIAnswerPanel({
+function AIAnswerPanel({
   isSearchActive = false,
   searchQuery = '',
   aiResponse = '',
   isStreaming = false,
   citations = [],
-  onClose
+  onClose,
+  convo,
+  userRes,
+  aiRes = ''
 }) {
+  const [messages, setMessages] = useState([]);
+  const handleMessageRetrival = async (uuid) => {
+    if (!uuid) return;
+    const data = await api.getMessages(uuid);
+    if (data) {
+      const filteredData = data.filter(msg => msg.conversation_id == convo.id);
+      setMessages(filteredData);
+    } else {
+      alert("no data returned");
+    }
+  };
+  const convoID = convo? convo.id: '';
+  useEffect(() => {
+    handleMessageRetrival(convoID);
+  }, [convoID]);
+  useEffect(() => {
+    if(aiResponse) {
+      setMessages(prev => [...prev, userRes, aiRes]);
+    }
+  }, [isStreaming]);
+
+  const bottomRef = useRef(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [isStreaming, aiRes]);
+
   return (
     <section className={`fixed top-0 bottom-0 right-0 z-40 lg:z-20 w-full lg:w-[450px] border-l border-white/5 bg-slate-950/95 lg:bg-slate-950/50 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-transform duration-500 ease-in-out overflow-hidden transform ${
       isSearchActive ? 'translate-x-0' : 'translate-x-full'
@@ -30,7 +60,7 @@ export default function AIAnswerPanel({
       </div>
 
       {/* Response body scroll content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto scroll-smooth p-6 space-y-6">
         
         {/* Question card */}
         <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
@@ -42,20 +72,19 @@ export default function AIAnswerPanel({
         <div className="space-y-3">
           <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Generated Response</p>
           <div className="text-sm text-slate-300 leading-relaxed font-normal whitespace-pre-wrap">
-            {aiResponse ? (
-              <span>
-                {aiResponse}
-                {isStreaming && (
-                  <span className="inline-block w-1.5 h-3.5 ml-1 bg-cyan-400 cursor-blink align-middle" />
-                )}
-              </span>
-            ) : (
-              <div className="flex items-center gap-2.5 text-slate-500 italic py-2">
-                <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
-                <span>AI is synthesizing memory stream...</span>
+            {messages.map(m => 
+              <div key={m.id}
+              className={`bg-gray-900 rounded-2xl w-fit p-2 mb-2 ${m.role == 'user'? 'mr-5': 'ml-5'} `}>
+                <p className=''>{m.content}</p>
               </div>
             )}
+            {!aiResponse &&
+              <div className="flex items-center gap-2.5 text-slate-500 italic py-8">
+                <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                <span>AI is synthesizing memory stream...</span>
+              </div>}
           </div>
+          <div ref={bottomRef}></div>
         </div>
 
         {/* Citation/Sources list */}
@@ -90,3 +119,5 @@ export default function AIAnswerPanel({
     </section>
   );
 }
+
+export default React.memo(AIAnswerPanel);

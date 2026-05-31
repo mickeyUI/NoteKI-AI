@@ -37,7 +37,7 @@ class CreateMessage(BaseModel):
     role: str
     content: str
 
-class ChangeID(BaseModel):
+class ReciveID(BaseModel):
     id: UUID
 
 class EditNote(BaseModel):

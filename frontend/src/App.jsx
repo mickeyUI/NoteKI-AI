@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from './services/api';
 import AuthPage from './components/AuthPage';
 import CreateNoteModal from './components/CreateNoteModal';
@@ -34,7 +34,9 @@ export default function App() {
   
   // History viewing state
   const [activeHistoryItem, setActiveHistoryItem] = useState(null);
-  
+  const [userRes, setUserQuery] = useState([]);
+  const [aiRes, setAiRes] = useState([]);
+
   // General status indicators
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingChats, setLoadingChats] = useState(false);
@@ -181,7 +183,6 @@ export default function App() {
     const query = inputVal;
     setInputVal('');
     setSearchQuery(query);
-    setActiveHistoryItem(null); // clear viewing past chats
     setIsSearchActive(true); // compress notes grid, slide out panel
     setAiResponse('');
     setIsStreaming(true);
@@ -192,8 +193,26 @@ export default function App() {
       if (!note) return false;
       const matchTitle = (note.title || '').toLowerCase();
       const matchContent = (note.content || '').toLowerCase();
-      //const matchTags = note.tags ? note.tags.some(t => query.toLowerCase().includes(t.toLowerCase())) : false;
-      //return keywords.some(k => matchTitle.includes(k) || matchContent.includes(k)) || matchTags;
+
+      // Normalize tags into an array before using Array.prototype.some
+      let matchTags = false;
+      if (note.tags) {
+        let tagsArray = [];
+        if (Array.isArray(note.tags)) {
+          tagsArray = note.tags;
+        } else if (typeof note.tags === 'string') {
+          tagsArray = note.tags.split(',').map(s => s.trim()).filter(Boolean);
+        } else if (typeof note.tags === 'object' && note.tags !== null) {
+          // convert possible object-likes into array of values
+          tagsArray = Object.values(note.tags).map(v => String(v).trim()).filter(Boolean);
+        }
+
+        if (tagsArray.length) {
+          matchTags = tagsArray.some(t => query.toLowerCase().includes(String(t).toLowerCase()));
+        }
+      }
+
+      return keywords.some(k => matchTitle.includes(k) || matchContent.includes(k)) || matchTags;
     }).slice(0, 3); // cap citations to 3 items
 
     setCitations(relatedNotes.map(n => ({
@@ -233,9 +252,24 @@ export default function App() {
 
       // Streaming completed successfully, trigger logs on the backend
       try {
-        const chatResult = await api.addChat(query);
-        const chatId = chatResult?.id || chatResult?.chat_id || 1;
-        await api.addMessage(chatId, query, fullResponseText);
+        let chatResult = activeHistoryItem || "";
+        if (!activeHistoryItem) {
+          chatResult = await api.addChat(query);
+        }
+        const chatId = chatResult?.id || '';
+      
+        const [fetchedUserQuery, fetchedAiRes] = await Promise.all([
+        api.addMessage(chatId, query, "user").catch(err => {
+          console.error("Notes load error", err);
+          return [];
+        }),
+        api.addMessage(chatId, fullResponseText, "AI").catch(err => {
+          console.error("Chats load error", err);
+          return [];
+        })
+      ]);
+      setUserQuery(fetchedUserQuery || []);
+      setAiRes(fetchedAiRes || []);
         // Refresh Chats list in the sidebar
         await api.getChats().then(setChats);
       } catch (logErr) {
@@ -250,13 +284,13 @@ export default function App() {
     }
   };
 
-  const handleDismissSearch = () => {
+  const handleDismissSearch = useCallback(() => {
     setIsSearchActive(false);
     setSearchQuery('');
     setAiResponse('');
     setActiveHistoryItem(null);
     setCitations([]);
-  };
+  }, []);
 
   const handleViewHistoryChat = (chatItem) => {
     setActiveHistoryItem(chatItem);
@@ -335,6 +369,9 @@ export default function App() {
             isStreaming={isStreaming}
             citations={citations}
             onClose={handleDismissSearch}
+            convo= {activeHistoryItem}
+            userRes= {userRes}
+            aiRes= {aiRes}
             />
         </div>
 

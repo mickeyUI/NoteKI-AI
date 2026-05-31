@@ -8,6 +8,8 @@ export default function ParticleBackground() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
     let animationFrameId;
     let particles = [];
     const particleCount = 45;
@@ -47,7 +49,8 @@ export default function ParticleBackground() {
         ctx.shadowBlur = 8;
         ctx.shadowColor = this.color;
         ctx.fill();
-        ctx.shadowBlur = 0; // reset
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0)';
       }
     }
 
@@ -114,5 +117,11 @@ export default function ParticleBackground() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full -z-10 block" />;
+  return (
+    <canvas 
+      ref={canvasRef} 
+      className="fixed inset-0 w-full h-full -z-10 block"
+      style={{ display: 'block' }}
+    />
+  );
 }

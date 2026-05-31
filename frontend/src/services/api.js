@@ -82,6 +82,11 @@ export const api = {
     apiRequest('/Chats', {
       method: 'GET'
     }),
+    getMessages: (convoID) => 
+    apiRequest('/Messages', {
+      method: 'POST',
+      body: JSON.stringify({"id": convoID})
+    }),
 
   addChat: (title) => 
     apiRequest('/AddChat', {
@@ -92,15 +97,13 @@ export const api = {
       })
     }),
 
-  addMessage: (chatId, question, responseText) => 
+  addMessage: (chatId, question, role ) => 
     apiRequest('/AddMessage', {
       method: 'POST',
       body: JSON.stringify({ 
-        chat_id: chatId, 
-        question: question, 
-        query: question,
-        response: responseText,
-        answer: responseText
+        conversation_id: chatId, 
+        content: question, 
+        role: role
       })
     })
 };
