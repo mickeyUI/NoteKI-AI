@@ -62,6 +62,16 @@ export const api = {
         source_url: note.source_url || ""
       })
     }),
+  uploadImg: (note) => 
+    apiRequest('/UploadImg', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: note.title,
+        content: note.content,
+        tags: note.tags,
+        source_url: note.source_url || ""
+      })
+    }),
   deleteNote: (noteid) => 
     apiRequest('/DelNote', {
       method: 'DELETE',

@@ -20,8 +20,10 @@ class Note(Base):
     embedding = Column(Vector(768), nullable=True)
     tags = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
+    note_type= Column(String, nullable=True, default="text")
     created_at = Column(DateTime, default = datetime.utcnow() , nullable=False)
     updated_at = Column(DateTime, default = datetime.utcnow() , nullable=False)
+
 
 class Converstions(Base):
     __tablename__ = "converstions"

@@ -58,9 +58,12 @@ export default function NoteCards({
                   <h3 className="text-base font-bold text-white mb-2 pr-8 group-hover:text-purple-300 transition-colors">
                     {note.title}
                   </h3>
-                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 mb-4">
+                  {note.note_type === 'text'? 
+                   <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 mb-4">
                     {note.content}
-                  </p>
+                  </p>:
+                   <img src={note.content} alt={note.title} className="rounded-lg mb-4 max-h-40 object-cover"/>}
+                 
                 </div>
 
                 {/* Pill tags and calendar */}

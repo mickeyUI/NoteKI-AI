@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, FileText, Pin, Calendar, Trash2Icon, SearchIcon } from 'lucide-react';
+import { Plus, RefreshCw, FileText, Pin, Calendar, Trash2Icon, SearchIcon, UploadIcon } from 'lucide-react';
 import NoteCards from "./NoteCards";
 
 export default function NotesFeed({
@@ -15,7 +15,8 @@ export default function NotesFeed({
   formatDate,
   handleDeleteNote,
   setNoteViewId,
-  setNoteViewOpen
+  setNoteViewOpen,
+  openUpload
 }) 
 {
 
@@ -37,6 +38,11 @@ export default function NotesFeed({
           <button className='border-0 p-2 rounded-2xl bg-gray-900 hover:bg-purple-950'>
             <SearchIcon className='w-4 h-4 ' />
           </button>
+        <button 
+        onClick={() => {openUpload(true)}}
+        className='bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-purple-500 py-1 px-2 rounded-2xl'>
+          <UploadIcon />
+        </button>
         <button
           onClick={onOpenCreateNoteModal}
           className="py-2.5 px-4 bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.2)] text-xs flex items-center gap-2 cursor-pointer"

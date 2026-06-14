@@ -5,7 +5,7 @@ from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateCh
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
-from LLM import get_embedding, generate
+from LLM import get_embedding, generate, Img_Analysis
 from fastapi.responses import StreamingResponse
 
 app = FastAPI()
@@ -65,6 +65,24 @@ def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(g
     db.commit()
     return {"Note": "Added"}
 
+@app.post("/UploadImg")
+def UploadImage(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
+    # Validate URL before passing to Img_Analysis
+    if not note.content or not (note.content.startswith("http://") or note.content.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid image URL. Must be a valid http/https URL")
+    
+    try:
+        content = Img_Analysis(note.content)
+        embeded = get_embedding(content.content)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to analyze image: {str(e)}")
+    
+    newNote = Note(user_id = userID, title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url, note_type="img" )
+    db.add(newNote)
+    db.commit()
+    return {"img": "added"}
+
+
 @app.get("/GetNote/{noteID}", response_model= ReturnNotes)
 def GetNote(noteID: str, userID = Depends(get_current_user), db = Depends(get_db)):
     note = db.query(Note).filter(Note.id == noteID, Note.user_id == userID).first()
@@ -107,15 +125,16 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
     embeded = get_embedding(question.question)
     results = db.execute(
     text("""
-        SELECT title, content
+        SELECT title, content, (embedding <=> CAST(:embedding AS vector)) AS distance
         FROM notes
         WHERE user_id = :user_id
-        ORDER BY embedding <=> CAST(:embedding AS vector)
-        LIMIT 5
+          AND (embedding <=> CAST(:embedding AS vector)) < :threshold
+        ORDER BY distance ASC
     """),
     {
         "user_id": str(userID),
-        "embedding": str(embeded)
+        "embedding": str(embeded),
+        "threshold": 0.6  # 0-1, identical-orthagonal respectivly
     }).fetchall()
     if not(results):
         return "you have no notes that match you question"

@@ -28,3 +28,33 @@ def generate(prompt: str):
         content = chunk.choices[0].delta.content
         if content:
             yield content
+
+def Img_Analysis(url: str):
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    completion = client.chat.completions.create(
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "What's in this image? not a pixel by pixel description rather a more meaningfull, what it represents and what it is"
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": url
+                        }
+                    }
+                ]
+            }
+        ],
+        temperature=1,
+        max_completion_tokens=1024,
+        top_p=1,
+        stream=False,
+        stop=None,
+    )
+
+    return completion.choices[0].message

@@ -7,6 +7,7 @@ import NotesFeed from './components/NotesFeed';
 import AIAnswerPanel from './components/AIAnswerPanel';
 import ChatInput from './components/ChatInput';
 import ViewNote from './components/ViewNote';
+import Upload from './components/Upload';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -19,6 +20,8 @@ export default function App() {
   const [noteCreationLoading, setNoteCreationLoading] = useState(false);
   const [noteViewLoading, setViewLoading] = useState(false);
   const [noteViewId, setNoteViewId] = useState('');
+  const [isUploadOpen, setUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [pinnedIds, setPinnedIds] = useState(() => {
     const saved = localStorage.getItem('pinned_notes');
     return saved ? JSON.parse(saved) : [];
@@ -140,6 +143,26 @@ export default function App() {
     }
   };
 
+  const handleUploading = async (noteData) => {
+    try {
+      const newUpload = await api.uploadImg(noteData);
+      // Optimistically append note if backend returns it, else refetch list
+      if (newUpload && newUpload.id) {
+        setNotes(prev => {
+          const currentList = getSafeNotes();
+          return [newUpload, ...currentList];
+        });
+      } else {
+        await api.getNotes().then(setNotes);
+      }
+      setUploadOpen(false);
+    } catch (err) {
+      alert("Failed to create note: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleEditNote = async (noteData) => {
     try {
       setViewLoading(true)
@@ -158,6 +181,7 @@ export default function App() {
       setViewLoading(false);
     }
   };
+
 
   const handleDeleteNote = async (noteID) => {
     const res = await api.deleteNote(noteID);
@@ -359,6 +383,7 @@ export default function App() {
             handleDeleteNote= {handleDeleteNote}
             setNoteViewId = {setNoteViewId}
             setNoteViewOpen= {setNoteViewOpen}
+            openUpload={setUploadOpen}
             />
 
           {/* AI Answer Panel - Slide out layout */}
@@ -401,6 +426,12 @@ export default function App() {
         onSubmit= {handleEditNote}
         
       />
+      <Upload
+      isOpen= {isUploadOpen}
+      onClose={() => setUploadOpen(false)}
+      onSubmit= {handleUploading}
+      loading= {uploading} 
+      setLoading= { setUploading}/>
     </div>
   );
 }
