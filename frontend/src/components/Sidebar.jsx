@@ -20,7 +20,7 @@ export default function Sidebar({
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-400 animate-pulse" />
           <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-            Lore DB
+            NoteKI
           </span>
         </div>
         <button

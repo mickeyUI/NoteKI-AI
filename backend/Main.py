@@ -77,10 +77,11 @@ def UploadImage(note: CreateNote, userID = Depends(get_current_user), db = Depen
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to analyze image: {str(e)}")
     
-    newNote = Note(user_id = userID, title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url, note_type="img" )
+    newNote = Note(user_id = userID, title = note.title, content = content, embedding= embeded, tags = note.tags, source_url = note.content
+    , note_type="img" )
     db.add(newNote)
     db.commit()
-    return {"img": "added"}
+    return {"img dis": content}
 
 
 @app.get("/GetNote/{noteID}", response_model= ReturnNotes)
@@ -134,7 +135,7 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
     {
         "user_id": str(userID),
         "embedding": str(embeded),
-        "threshold": 0.6  # 0-1, identical-orthagonal respectivly
+        "threshold": 0.7  # 0-1, identical-orthagonal respectivly
     }).fetchall()
     if not(results):
         return "you have no notes that match you question"
@@ -153,7 +154,7 @@ Instructions:
 - If the note doesn't contain enough information to answer, say so clearly.
 - Be concise, precise, and well-structured.
 - Use bullet points, tables, or numbered lists when they improve clarity.
-- Think step-by-step before answering.
+- if its an image, search throught the web and send back a brief note of what you found.
 - you dont have to use all the notes only the ones that is related to the question."""
 
     return StreamingResponse(generate(prompt), media_type="text/plain")

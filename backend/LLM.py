@@ -29,6 +29,38 @@ def generate(prompt: str):
         if content:
             yield content
 
+prompt_text = """You are analyzing a screenshot or image saved to someone's personal 
+knowledge base. Your job is to identify WHAT this is and extract the information that 
+would make it findable later through search.
+
+Follow these rules based on what the image contains:
+
+- If it's a movie/TV show poster or title card: identify the exact title, genre, and 
+  any visible cast or director names. Note that this is a movie/show recommendation or 
+  reference.
+
+- If it's a website, app, or product screenshot: identify the name of the website/app/
+  product, what it does or offers, and the category it belongs to (e.g. productivity tool, 
+  online shop, SaaS platform, recipe site).
+
+- If it's a code snippet, programming screenshot, or technical content: identify the 
+  programming language, the concept or library being shown, and summarize what the code 
+  does. Mention this is a coding/technical reference.
+
+- If it's a logo or brand: identify the company/brand name and what industry or product 
+  category it's associated with.
+
+- If it's a quote, meme, or text-based image: extract the exact text and summarize the 
+  underlying message or topic.
+
+- For anything else: identify the core subject and what real-world category it falls 
+  under (travel, fitness, fashion, finance, etc).
+
+Always start your response with a one-word category tag in brackets, like [movie], [app], 
+[code], [brand], [quote], or [general]. Then give a concise 2-4 sentence note capturing 
+the key identifying details — title, name, or text exactly as it appears, followed by 
+context about what it is and why someone might save it."""
+
 def Img_Analysis(url: str):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     completion = client.chat.completions.create(
@@ -39,7 +71,7 @@ def Img_Analysis(url: str):
                 "content": [
                     {
                         "type": "text",
-                        "text": "What's in this image? not a pixel by pixel description rather a more meaningfull, what it represents and what it is"
+                        "text": prompt_text
                     },
                     {
                         "type": "image_url",

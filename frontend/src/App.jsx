@@ -146,6 +146,7 @@ export default function App() {
   const handleUploading = async (noteData) => {
     try {
       const newUpload = await api.uploadImg(noteData);
+      console.log(newUpload);
       // Optimistically append note if backend returns it, else refetch list
       if (newUpload && newUpload.id) {
         setNotes(prev => {
