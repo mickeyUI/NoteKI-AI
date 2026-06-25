@@ -1,13 +1,16 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from Schemas import Register, Login, CreateNote, Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, EditNote
+from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, EditNote
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
 from LLM import get_embedding, generate, Img_Analysis
 from fastapi.responses import StreamingResponse
-
+import json
+import numpy as np
+import hdbscan
+from datetime import datetime
 app = FastAPI()
 
 app.add_middleware(
@@ -16,6 +19,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Citation"]
 )
 
 """def get_current_user(authorization: str = Header(None)):
@@ -66,19 +70,19 @@ def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(g
     return {"Note": "Added"}
 
 @app.post("/UploadImg")
-def UploadImage(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
+def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depends(get_db)):
     # Validate URL before passing to Img_Analysis
-    if not note.content or not (note.content.startswith("http://") or note.content.startswith("https://")):
+    if not note.source_url or not (note.source_url.startswith("http://") or note.source_url.startswith("https://")):
         raise HTTPException(status_code=400, detail="Invalid image URL. Must be a valid http/https URL")
     
     try:
-        content = Img_Analysis(note.content)
+        content = Img_Analysis(note.source_url)
         embeded = get_embedding(content.content)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to analyze image: {str(e)}")
     
-    newNote = Note(user_id = userID, title = note.title, content = content, embedding= embeded, tags = note.tags, source_url = note.content
-    , note_type="img" )
+    newNote = Note(user_id = userID, title = note.title, content = content.content, embedding= embeded, 
+                   tags = note.tags, source_url = note.source_url, note_type="img" )
     db.add(newNote)
     db.commit()
     return {"img dis": content}
@@ -109,6 +113,7 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     note.tags = newNote.tags
     note.source_url = newNote.source_url
     note.embedding = get_embedding(newNote.content)
+    note.updated_at= datetime.utcnow()
     db.commit()
     return {"edit": "sucessful"}
 
@@ -126,7 +131,7 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
     embeded = get_embedding(question.question)
     results = db.execute(
     text("""
-        SELECT title, content, (embedding <=> CAST(:embedding AS vector)) AS distance
+        SELECT id, title, content, (embedding <=> CAST(:embedding AS vector)) AS distance
         FROM notes
         WHERE user_id = :user_id
           AND (embedding <=> CAST(:embedding AS vector)) < :threshold
@@ -135,10 +140,12 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
     {
         "user_id": str(userID),
         "embedding": str(embeded),
-        "threshold": 0.7  # 0-1, identical-orthagonal respectivly
+        "threshold": 0.44  # 0-1, identical-orthagonal respectivly
     }).fetchall()
     if not(results):
         return "you have no notes that match you question"
+    citation= [(str(result.id), result.title, result.content) for result in results]
+    citationStringified= json.dumps(citation)
     lst_notes = [{"title": result.title, "content": result.content} for result in results]
     context = "\n\n".join([f"{n['title']}: {n['content']}" for n in lst_notes])
     prompt = f"""You are an expert assistant. I will give you a note (saved information) followed by a question or request.
@@ -157,7 +164,8 @@ Instructions:
 - if its an image, search throught the web and send back a brief note of what you found.
 - you dont have to use all the notes only the ones that is related to the question."""
 
-    return StreamingResponse(generate(prompt), media_type="text/plain")
+    return StreamingResponse(generate(prompt), media_type="text/plain", headers={"X-Citation": citationStringified})
+           
      
 @app.post("/search", response_model = list[str])
 def Search(query: Question, userID = Depends(get_current_user), db = Depends(get_db)):
@@ -203,6 +211,15 @@ def AddChat(chat: CreateChat, userID = Depends(get_current_user), db = Depends(g
     db.refresh(newChat)
     return {"id": newChat.id}
 
+@app.delete("/DelChat")
+def DeleteChat(chatID: ReciveID, userID = Depends(get_current_user), db = Depends(get_db)):
+    chat= db.query(Converstions).filter(Converstions.id == chatID.id, Converstions.user_id == userID).first()
+    if not(chat):
+        raise HTTPException(status_code=404, detail= "chat not found")
+    db.delete(chat)
+    db.commit()
+    return  {"delete": "sucessful"}
+
 @app.post("/AddMessage")
 def AddMsg(msg: CreateMessage , db = Depends(get_db)):
     newMsg = Messages(conversation_id = msg.conversation_id, role = msg.role, content = msg.content)
@@ -211,8 +228,18 @@ def AddMsg(msg: CreateMessage , db = Depends(get_db)):
     db.refresh(newMsg)
     return newMsg
 
+@app.get("/Group")
+def GroupNotes(userID = Depends(get_current_user), db = Depends(get_db)):
+    notes= db.query(Note).filter(Note.user_id == userID, Note.group == 'none').all()
+    embeddings = np.array([ note.embedding for note in notes])
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=2,
+        min_samples=2,
+        metric='euclidean'
+    )
+    labels = clusterer.fit_predict(embeddings)
+    return labels.tolist() 
     
-
    
 
 

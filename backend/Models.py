@@ -21,8 +21,9 @@ class Note(Base):
     tags = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
     note_type= Column(String, nullable=True, default="text")
-    created_at = Column(DateTime, default = datetime.utcnow() , nullable=False)
-    updated_at = Column(DateTime, default = datetime.utcnow() , nullable=False)
+    group= Column(String, nullable=True, default="none")
+    created_at = Column(DateTime, default = datetime.utcnow , nullable=False)
+    updated_at = Column(DateTime, default = datetime.utcnow , nullable=False)
 
 
 class Converstions(Base):
@@ -30,11 +31,11 @@ class Converstions(Base):
     id = Column(UUID(as_uuid = True), primary_key=True, default = uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     title = Column(String, nullable = True)
-    created_at = Column(DateTime , default = datetime.utcnow() , nullable=False)
+    created_at = Column(DateTime , default = datetime.utcnow , nullable=False)
 
 class Messages(Base):
     __tablename__ = "messages"
     id = Column(UUID(as_uuid = True), primary_key=True, default = uuid.uuid4)
-    conversation_id = Column(UUID(as_uuid=True), ForeignKey("converstions.id"), nullable=False)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey("converstions.id", ondelete="CASCADE"), nullable=False)
     role = Column(String, nullable = False)
     content = Column(String, nullable = False)

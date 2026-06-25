@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
 export default function ParticleBackground() {
   const canvasRef = useRef(null);
@@ -7,21 +7,21 @@ export default function ParticleBackground() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     let animationFrameId;
     let particles = [];
     const particleCount = 45;
-    
+
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
     const colors = [
-      'rgba(56, 189, 248, 0.15)', // Light blue / Cyan
-      'rgba(168, 85, 247, 0.15)', // Purple / Violet
-      'rgba(236, 72, 153, 0.12)',  // Pink
-      'rgba(129, 140, 248, 0.15)', // Indigo
+      "rgba(56, 189, 248, 0.15)", // Light blue / Cyan
+      "rgba(168, 85, 247, 0.15)", // Purple / Violet
+      "rgba(236, 72, 153, 0.12)", // Pink
+      "rgba(129, 140, 248, 0.15)", // Indigo
     ];
 
     class Particle {
@@ -50,7 +50,7 @@ export default function ParticleBackground() {
         ctx.shadowColor = this.color;
         ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+        ctx.shadowColor = "rgba(0, 0, 0, 0)";
       }
     }
 
@@ -83,11 +83,18 @@ export default function ParticleBackground() {
 
     const animate = () => {
       ctx.clearRect(0, 0, width, height);
-      
+
       // Radial glow gradient background
-      const grad = ctx.createRadialGradient(width / 2, height / 2, 10, width / 2, height / 2, Math.max(width, height));
-      grad.addColorStop(0, '#0b0c19');
-      grad.addColorStop(1, '#030712');
+      const grad = ctx.createRadialGradient(
+        width / 2,
+        height / 2,
+        10,
+        width / 2,
+        height / 2,
+        Math.max(width, height),
+      );
+      grad.addColorStop(0, "#0b0c19");
+      grad.addColorStop(1, "#030712");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, width, height);
 
@@ -109,19 +116,19 @@ export default function ParticleBackground() {
       init();
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
   return (
-    <canvas 
-      ref={canvasRef} 
+    <canvas
+      ref={canvasRef}
       className="fixed inset-0 w-full h-full -z-10 block"
-      style={{ display: 'block' }}
+      style={{ display: "block" }}
     />
   );
 }

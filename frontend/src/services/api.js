@@ -1,15 +1,15 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export async function apiRequest(endpoint, options = {}) {
-  const token = localStorage.getItem('token');
-  
+  const token = localStorage.getItem("token");
+
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...options.headers,
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const config = {
@@ -20,13 +20,17 @@ export async function apiRequest(endpoint, options = {}) {
   const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
   if (response.status === 401) {
-    localStorage.removeItem('token');
-    window.dispatchEvent(new Event('auth-failed'));
+    localStorage.removeItem("token");
+    window.dispatchEvent(new Event("auth-failed"));
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.detail || `Request failed with status ${response.status}`);
+    throw new Error(
+      errorData.message ||
+        errorData.detail ||
+        `Request failed with status ${response.status}`,
+    );
   }
 
   return response.json();
@@ -34,86 +38,90 @@ export async function apiRequest(endpoint, options = {}) {
 
 export const api = {
   baseUrl: BASE_URL,
-  
-  register: (email, password) => 
-    apiRequest('/Register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password })
+
+  register: (email, password) =>
+    apiRequest("/Register", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
     }),
 
-  login: (email, password) => 
-    apiRequest('/Login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password })
+  login: (email, password) =>
+    apiRequest("/Login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
     }),
 
-  getNotes: () => 
-    apiRequest('/GetNotes', {
-      method: 'GET'
+  getNotes: () =>
+    apiRequest("/GetNotes", {
+      method: "GET",
     }),
 
-  addNote: (note) => 
-    apiRequest('/AddNote', {
-      method: 'POST',
+  addNote: (note) =>
+    apiRequest("/AddNote", {
+      method: "POST",
+      body: JSON.stringify({
+        title: note.title,
+        tags: note.tags,
+        source_url: note.source_url || "",
+      }),
+    }),
+  uploadImg: (note) =>
+    apiRequest("/UploadImg", {
+      method: "POST",
       body: JSON.stringify({
         title: note.title,
         content: note.content,
         tags: note.tags,
-        source_url: note.source_url || ""
-      })
+        source_url: note.source_url || "",
+      }),
     }),
-  uploadImg: (note) => 
-    apiRequest('/UploadImg', {
-      method: 'POST',
+  deleteNote: (noteid) =>
+    apiRequest("/DelNote", {
+      method: "DELETE",
+      body: JSON.stringify({ id: noteid }),
+    }),
+  editNote: (note) =>
+    apiRequest("/UpdateNote", {
+      method: "PUT",
       body: JSON.stringify({
+        id: note.id,
         title: note.title,
         content: note.content,
         tags: note.tags,
-        source_url: note.source_url || ""
-      })
+        source_url: note.sourceUrl || "",
+      }),
     }),
-  deleteNote: (noteid) => 
-    apiRequest('/DelNote', {
-      method: 'DELETE',
-      body: JSON.stringify({id: noteid})
+  getChats: () =>
+    apiRequest("/Chats", {
+      method: "GET",
     }),
-  editNote: (note) => 
-  apiRequest('/UpdateNote', {
-        method: 'PUT',
-        body: JSON.stringify({
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          tags: note.tags,
-          source_url: note.sourceUrl || "",
-        })
-    }),
-  getChats: () => 
-    apiRequest('/Chats', {
-      method: 'GET'
-    }),
-    getMessages: (convoID) => 
-    apiRequest('/Messages', {
-      method: 'POST',
-      body: JSON.stringify({"id": convoID})
+  getMessages: (convoID) =>
+    apiRequest("/Messages", {
+      method: "POST",
+      body: JSON.stringify({ id: convoID }),
     }),
 
-  addChat: (title) => 
-    apiRequest('/AddChat', {
-      method: 'POST',
-      body: JSON.stringify({ 
+  addChat: (title) =>
+    apiRequest("/AddChat", {
+      method: "POST",
+      body: JSON.stringify({
         title: title,
-        name: title 
-      })
+        name: title,
+      }),
+    }),
+  deleteChat: (chatid) =>
+    apiRequest("/DelChat", {
+      method: "DELETE",
+      body: JSON.stringify({ id: chatid }),
     }),
 
-  addMessage: (chatId, question, role ) => 
-    apiRequest('/AddMessage', {
-      method: 'POST',
-      body: JSON.stringify({ 
-        conversation_id: chatId, 
-        content: question, 
-        role: role
-      })
-    })
+  addMessage: (chatId, question, role) =>
+    apiRequest("/AddMessage", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation_id: chatId,
+        content: question,
+        role: role,
+      }),
+    }),
 };

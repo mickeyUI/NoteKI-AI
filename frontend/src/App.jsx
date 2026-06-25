@@ -1,40 +1,47 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { api } from './services/api';
-import AuthPage from './components/AuthPage';
-import CreateNoteModal from './components/CreateNoteModal';
-import Sidebar from './components/Sidebar';
-import NotesFeed from './components/NotesFeed';
-import AIAnswerPanel from './components/AIAnswerPanel';
-import ChatInput from './components/ChatInput';
-import ViewNote from './components/ViewNote';
-import Upload from './components/Upload';
+import React, { useState, useEffect, useCallback } from "react";
+import { api } from "./services/api";
+import AuthPage from "./components/AuthPage";
+import CreateNoteModal from "./components/CreateNoteModal";
+import Sidebar from "./components/Sidebar";
+import NotesFeed from "./components/NotesFeed";
+import AIAnswerPanel from "./components/AIAnswerPanel";
+import ChatInput from "./components/ChatInput";
+import ViewNote from "./components/ViewNote";
+import Upload from "./components/Upload";
+import { FastForward } from "lucide-react";
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(localStorage.getItem("token"));
   const [notes, setNotes] = useState([]);
   const [chats, setChats] = useState([]);
-  
+  const [folder, setFolder] = useState([
+    "Trading and Finance",
+    "Website Design",
+    "Trading and Finance",
+    "Website Design",
+  ]);
+
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [isNoteViewOpen, setNoteViewOpen] = useState(false);
   const [noteCreationLoading, setNoteCreationLoading] = useState(false);
   const [noteViewLoading, setViewLoading] = useState(false);
-  const [noteViewId, setNoteViewId] = useState('');
+  const [noteViewId, setNoteViewId] = useState("");
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pinnedIds, setPinnedIds] = useState(() => {
-    const saved = localStorage.getItem('pinned_notes');
+    const saved = localStorage.getItem("pinned_notes");
     return saved ? JSON.parse(saved) : [];
   });
 
   // AI Streaming States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [inputVal, setInputVal] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [inputVal, setInputVal] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [aiResponse, setAiResponse] = useState('');
+  const [aiResponse, setAiResponse] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [citations, setCitations] = useState([]);
-  
+
   // History viewing state
   const [activeHistoryItem, setActiveHistoryItem] = useState(null);
   const [userRes, setUserQuery] = useState([]);
@@ -44,13 +51,17 @@ export default function App() {
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingChats, setLoadingChats] = useState(false);
 
+  if (!token) {
+    return <AuthPage onAuthSuccess={setToken} />;
+  }
+
   // Sync token to localStorage and load data
   useEffect(() => {
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem("token", token);
       loadDashboardData();
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem("token");
       setNotes([]);
       setChats([]);
     }
@@ -61,8 +72,8 @@ export default function App() {
     const handleAuthFailed = () => {
       setToken(null);
     };
-    window.addEventListener('auth-failed', handleAuthFailed);
-    return () => window.removeEventListener('auth-failed', handleAuthFailed);
+    window.addEventListener("auth-failed", handleAuthFailed);
+    return () => window.removeEventListener("auth-failed", handleAuthFailed);
   }, []);
 
   const loadDashboardData = async () => {
@@ -71,14 +82,14 @@ export default function App() {
     try {
       // Parallel fetch as required: /GetNotes and /Chats
       const [fetchedNotes, fetchedChats] = await Promise.all([
-        api.getNotes().catch(err => {
+        api.getNotes().catch((err) => {
           console.error("Notes load error", err);
           return [];
         }),
-        api.getChats().catch(err => {
+        api.getChats().catch((err) => {
           console.error("Chats load error", err);
           return [];
-        })
+        }),
       ]);
       setNotes(fetchedNotes || []);
       setChats(fetchedChats || []);
@@ -108,18 +119,30 @@ export default function App() {
   };
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'Recently';
+    if (!dateStr) return "Recently";
     const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? 'Recently' : d.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return isNaN(d.getTime())
+      ? "Recently"
+      : d.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
   };
+
+  const safeNotes = getSafeNotes();
+  const safeChats = getSafeChats();
+
+  const pinnedNotes = safeNotes.filter(
+    (n) => n && n.id && pinnedIds.includes(n.id),
+  );
+  const standardNotes = safeNotes.filter(
+    (n) => n && n.id && !pinnedIds.includes(n.id),
+  );
 
   const handleLogout = () => {
     setToken(null);
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
   };
 
   const handleCreateNote = async (noteData) => {
@@ -128,7 +151,7 @@ export default function App() {
       const newNote = await api.addNote(noteData);
       // Optimistically append note if backend returns it, else refetch list
       if (newNote && newNote.id) {
-        setNotes(prev => {
+        setNotes((prev) => {
           const currentList = getSafeNotes();
           return [newNote, ...currentList];
         });
@@ -149,7 +172,7 @@ export default function App() {
       console.log(newUpload);
       // Optimistically append note if backend returns it, else refetch list
       if (newUpload && newUpload.id) {
-        setNotes(prev => {
+        setNotes((prev) => {
           const currentList = getSafeNotes();
           return [newUpload, ...currentList];
         });
@@ -166,12 +189,12 @@ export default function App() {
 
   const handleEditNote = async (noteData) => {
     try {
-      setViewLoading(true)
+      setViewLoading(true);
       const newNote = await api.editNote(noteData);
       // Optimistically append note if backend returns it, else refetch list
       if (newNote && newNote.id) {
-        const modified = notes.filter(note => note.id != newNote.id);
-        setNotes([newNote, ...modified])
+        const modified = notes.filter((note) => note.id != newNote.id);
+        setNotes([newNote, ...modified]);
       } else {
         await api.getNotes().then(setNotes);
       }
@@ -183,22 +206,32 @@ export default function App() {
     }
   };
 
-
   const handleDeleteNote = async (noteID) => {
     const res = await api.deleteNote(noteID);
     if (res) {
-      const newNote = notes.filter( note => note.id != noteID);
+      const newNote = notes.filter((note) => note.id != noteID);
       setNotes(newNote);
     } else {
-      alert("error")
+      alert("error");
     }
-  }
+  };
+
+  const handleDeleteChat = async (chatID) => {
+    const res = await api.deleteChat(chatID);
+    if (res) {
+      const newChat = chats.filter((chat) => chat.id != chatID);
+      setChats(newChat);
+    } else {
+      alert("error");
+    }
+  };
+
   const togglePin = (noteId) => {
     const nextPinned = pinnedIds.includes(noteId)
-      ? pinnedIds.filter(id => id !== noteId)
+      ? pinnedIds.filter((id) => id !== noteId)
       : [...pinnedIds, noteId];
     setPinnedIds(nextPinned);
-    localStorage.setItem('pinned_notes', JSON.stringify(nextPinned));
+    localStorage.setItem("pinned_notes", JSON.stringify(nextPinned));
   };
 
   const handleSearchSubmit = async (e) => {
@@ -206,64 +239,35 @@ export default function App() {
     if (!inputVal.trim()) return;
 
     const query = inputVal;
-    setInputVal('');
+    setInputVal("");
     setSearchQuery(query);
     setIsSearchActive(true); // compress notes grid, slide out panel
-    setAiResponse('');
+    setAiResponse("");
     setIsStreaming(true);
-
-    const safeNotesList = getSafeNotes();
-    const keywords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    const relatedNotes = safeNotesList.filter(note => {
-      if (!note) return false;
-      const matchTitle = (note.title || '').toLowerCase();
-      const matchContent = (note.content || '').toLowerCase();
-
-      // Normalize tags into an array before using Array.prototype.some
-      let matchTags = false;
-      if (note.tags) {
-        let tagsArray = [];
-        if (Array.isArray(note.tags)) {
-          tagsArray = note.tags;
-        } else if (typeof note.tags === 'string') {
-          tagsArray = note.tags.split(',').map(s => s.trim()).filter(Boolean);
-        } else if (typeof note.tags === 'object' && note.tags !== null) {
-          // convert possible object-likes into array of values
-          tagsArray = Object.values(note.tags).map(v => String(v).trim()).filter(Boolean);
-        }
-
-        if (tagsArray.length) {
-          matchTags = tagsArray.some(t => query.toLowerCase().includes(String(t).toLowerCase()));
-        }
-      }
-
-      return keywords.some(k => matchTitle.includes(k) || matchContent.includes(k)) || matchTags;
-    }).slice(0, 3); // cap citations to 3 items
-
-    setCitations(relatedNotes.map(n => ({
-      title: n.title,
-      source_url: n.source_url || `Note Reference: ${n.title}`,
-      excerpt: n.content.substring(0, 100) + '...'
-    })));
 
     try {
       const response = await fetch(`${api.baseUrl}/question`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ question: query })
+        body: JSON.stringify({ question: query }),
       });
 
       if (!response.ok) {
         throw new Error(`AI Streaming failed: ${response.statusText}`);
       }
-
+      const stringifiedCitation = response.headers.get("X-Citation");
+      if (stringifiedCitation) {
+        const parsedCitation = JSON.parse(stringifiedCitation);
+        setCitations(parsedCitation);
+        console.log("Citations received:", parsedCitation);
+      }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
-      let fullResponseText = '';
+      let fullResponseText = "";
 
       while (!done) {
         const { value, done: doneReading } = await reader.read();
@@ -281,29 +285,30 @@ export default function App() {
         if (!activeHistoryItem) {
           chatResult = await api.addChat(query);
         }
-        const chatId = chatResult?.id || '';
-      
+        const chatId = chatResult?.id || "";
+
         const [fetchedUserQuery, fetchedAiRes] = await Promise.all([
-        api.addMessage(chatId, query, "user").catch(err => {
-          console.error("Notes load error", err);
-          return [];
-        }),
-        api.addMessage(chatId, fullResponseText, "AI").catch(err => {
-          console.error("Chats load error", err);
-          return [];
-        })
-      ]);
-      setUserQuery(fetchedUserQuery || []);
-      setAiRes(fetchedAiRes || []);
+          api.addMessage(chatId, query, "user").catch((err) => {
+            console.error("Notes load error", err);
+            return [];
+          }),
+          api.addMessage(chatId, fullResponseText, "AI").catch((err) => {
+            console.error("Chats load error", err);
+            return [];
+          }),
+        ]);
+        setUserQuery(fetchedUserQuery || []);
+        setAiRes(fetchedAiRes || []);
         // Refresh Chats list in the sidebar
         await api.getChats().then(setChats);
       } catch (logErr) {
         console.error("Failed to log chat conversation:", logErr);
       }
-
     } catch (err) {
       console.error(err);
-      setAiResponse(`An error occurred while generating the response: ${err.message}`);
+      setAiResponse(
+        `An error occurred while generating the response: ${err.message}`,
+      );
     } finally {
       setIsStreaming(false);
     }
@@ -311,38 +316,34 @@ export default function App() {
 
   const handleDismissSearch = useCallback(() => {
     setIsSearchActive(false);
-    setSearchQuery('');
-    setAiResponse('');
+    setSearchQuery("");
+    setAiResponse("");
     setActiveHistoryItem(null);
     setCitations([]);
   }, []);
 
   const handleViewHistoryChat = (chatItem) => {
     setActiveHistoryItem(chatItem);
-    setSearchQuery(chatItem.title || 'Conversation');
-    
+    setSearchQuery(chatItem.title || "Conversation");
+
     // Find recorded message inside chat logs
-    let responseContent = chatItem.response || chatItem.answer || chatItem.content || '';
+    let responseContent =
+      chatItem.response || chatItem.answer || chatItem.content || "";
     if (!responseContent && chatItem.messages && chatItem.messages.length > 0) {
       const lastMsg = chatItem.messages[chatItem.messages.length - 1];
-      responseContent = lastMsg.response || lastMsg.answer || lastMsg.content || '';
+      responseContent =
+        lastMsg.response || lastMsg.answer || lastMsg.content || "";
     }
 
-    setAiResponse(responseContent || "This conversation summary was recorded. No detailed message body was stored.");
+    setAiResponse(
+      responseContent ||
+        "This conversation summary was recorded. No detailed message body was stored.",
+    );
     setCitations([]);
     setIsSearchActive(true); // Compresses notes grid, slides out panel
   };
 
-  if (!token) {
-    return <AuthPage onAuthSuccess={setToken} />;
-  }
-
-  const safeNotes = getSafeNotes();
-  const safeChats = getSafeChats();
-  
-
-  const pinnedNotes = safeNotes.filter(n => n && n.id && pinnedIds.includes(n.id));
-  const standardNotes = safeNotes.filter(n => n && n.id && !pinnedIds.includes(n.id));
+  const handleGrouping = async () => {};
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
@@ -357,22 +358,23 @@ export default function App() {
         onTogglePin={togglePin}
         onLogout={handleLogout}
         onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+        toggleDelete={handleDeleteChat}
+        handleGrouping={handleGrouping}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-screen relative overflow-hidden bg-[#030712]">
-        
         {/* Glow ambient background inside dashboard */}
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-500/5 rounded-full blur-[120px] pointer-events-none z-0" />
         <div className="absolute bottom-[-15%] left-[20%] w-[45%] h-[45%] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
         {/* Split Panel Flex Core */}
         <div className="flex-1 flex h-[calc(100vh-80px)] overflow-hidden relative z-10">
-          
           {/* Notes Feed Container */}
           <NotesFeed
             loadingNotes={loadingNotes}
             notes={safeNotes}
+            folders={folder}
             pinnedNotes={pinnedNotes}
             standardNotes={standardNotes}
             pinnedIds={pinnedIds}
@@ -381,11 +383,11 @@ export default function App() {
             onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
             isSearchActive={isSearchActive}
             formatDate={formatDate}
-            handleDeleteNote= {handleDeleteNote}
-            setNoteViewId = {setNoteViewId}
-            setNoteViewOpen= {setNoteViewOpen}
+            handleDeleteNote={handleDeleteNote}
+            setNoteViewId={setNoteViewId}
+            setNoteViewOpen={setNoteViewOpen}
             openUpload={setUploadOpen}
-            />
+          />
 
           {/* AI Answer Panel - Slide out layout */}
           <AIAnswerPanel
@@ -395,10 +397,12 @@ export default function App() {
             isStreaming={isStreaming}
             citations={citations}
             onClose={handleDismissSearch}
-            convo= {activeHistoryItem}
-            userRes= {userRes}
-            aiRes= {aiRes}
-            />
+            convo={activeHistoryItem}
+            userRes={userRes}
+            aiRes={aiRes}
+            setNoteViewId={setNoteViewId}
+            setNoteViewOpen={setNoteViewOpen}
+          />
         </div>
 
         {/* AI Search/Chat Input (Bottom Fixed) */}
@@ -407,7 +411,7 @@ export default function App() {
           onChange={setInputVal}
           isStreaming={isStreaming}
           onSubmit={handleSearchSubmit}
-          />
+        />
       </main>
 
       {/* Note Modal Dialog */}
@@ -416,23 +420,23 @@ export default function App() {
         onClose={() => setIsNoteModalOpen(false)}
         onSubmit={handleCreateNote}
         loading={noteCreationLoading}
-        />
+      />
       <ViewNote
         isOpen={isNoteViewOpen}
-        setView ={setNoteViewOpen}
+        setView={setNoteViewOpen}
         loading={noteViewLoading}
-        noteid= {noteViewId}
-        setid= {setNoteViewId}
-        notes= {notes}
-        onSubmit= {handleEditNote}
-        
+        noteid={noteViewId}
+        setid={setNoteViewId}
+        notes={notes}
+        onSubmit={handleEditNote}
       />
       <Upload
-      isOpen= {isUploadOpen}
-      onClose={() => setUploadOpen(false)}
-      onSubmit= {handleUploading}
-      loading= {uploading} 
-      setLoading= { setUploading}/>
+        isOpen={isUploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onSubmit={handleUploading}
+        loading={uploading}
+        setLoading={setUploading}
+      />
     </div>
   );
 }

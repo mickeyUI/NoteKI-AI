@@ -17,6 +17,11 @@ class CreateNote(BaseModel):
     tags: str
     source_url: str
 
+class UploadImg(BaseModel):
+    title: Optional[str] = "Image"
+    tags: str
+    source_url: str
+    
 class ReturnNotes(BaseModel):
     id: UUID
     title: str
@@ -37,6 +42,8 @@ class CreateMessage(BaseModel):
     conversation_id: str
     role: str
     content: str
+
+
 
 class ReciveID(BaseModel):
     id: UUID

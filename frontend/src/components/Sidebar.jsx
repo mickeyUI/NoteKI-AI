@@ -1,5 +1,15 @@
-import React from 'react';
-import { Sparkles, Pin, History, Plus, MessageSquare, ArrowRight, LogOut, RefreshCw } from 'lucide-react';
+import React from "react";
+import {
+  Sparkles,
+  Pin,
+  History,
+  Plus,
+  MessageSquare,
+  DeleteIcon,
+  LogOut,
+  RefreshCw,
+  FolderIcon,
+} from "lucide-react";
 
 export default function Sidebar({
   pinnedNotes = [],
@@ -10,11 +20,12 @@ export default function Sidebar({
   onSelectShortcut,
   onTogglePin,
   onLogout,
-  onOpenCreateNoteModal
+  onOpenCreateNoteModal,
+  toggleDelete,
+  HandleGrouping,
 }) {
   return (
     <aside className="w-64 border-r border-white/5 bg-slate-950/70 backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
-      
       {/* Top brand portion */}
       <div className="p-5 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -24,11 +35,11 @@ export default function Sidebar({
           </span>
         </div>
         <button
-          onClick={onOpenCreateNoteModal}
+          onClick={HandleGrouping}
           className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
-          title="Create Note"
+          title="Group Notes"
         >
-          <Plus className="w-4 h-4" />
+          <FolderIcon className="w-4 h-4" />
         </button>
       </div>
 
@@ -36,9 +47,11 @@ export default function Sidebar({
       <div className="px-4 py-3 flex-none">
         <div className="flex items-center gap-2 mb-2 px-1 text-slate-400">
           <Pin className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-          <span className="text-xs font-bold uppercase tracking-wider">Pinned Hubs</span>
+          <span className="text-xs font-bold uppercase tracking-wider">
+            Pinned Hubs
+          </span>
         </div>
-        
+
         <div className="space-y-1 max-h-48 overflow-y-auto">
           {pinnedNotes.length === 0 ? (
             <div className="text-[11px] text-slate-600 px-2 py-1.5 italic">
@@ -52,8 +65,8 @@ export default function Sidebar({
                 className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-purple-200 bg-purple-500/5 hover:bg-purple-500/10 border-l-2 border-purple-500 transition-all duration-200 cursor-pointer"
               >
                 <span className="truncate pr-2">{note.title}</span>
-                <Pin 
-                  className="w-3 h-3 text-purple-400 cursor-pointer shrink-0 opacity-85 hover:opacity-100" 
+                <Pin
+                  className="w-3 h-3 text-purple-400 cursor-pointer shrink-0 opacity-85 hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     onTogglePin(note.id);
@@ -69,7 +82,9 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto px-4 py-2 border-t border-white/5">
         <div className="flex items-center gap-2 mb-3 px-1 text-slate-400">
           <History className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="text-xs font-bold uppercase tracking-wider">History</span>
+          <span className="text-xs font-bold uppercase tracking-wider">
+            History
+          </span>
         </div>
 
         <div className="space-y-1.5">
@@ -89,15 +104,27 @@ export default function Sidebar({
                 <button
                   key={chat.id}
                   onClick={() => onViewHistory(chat)}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-left text-xs font-medium transition-all duration-200 border cursor-pointer ${
-                    isActive 
-                      ? 'bg-slate-900 text-cyan-300 border-cyan-500/30' 
-                      : 'bg-transparent text-slate-400 border-transparent hover:bg-white/5 hover:text-white'
+                  className={`w-full hover:border-cyan-100/20 flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl group text-left text-xs font-medium transition-all duration-200 border cursor-pointer ${
+                    isActive
+                      ? "bg-slate-900 text-cyan-300 border-cyan-500/30"
+                      : "bg-transparent text-slate-400 border-transparent hover:bg-white/5 hover:text-white"
                   }`}
                 >
-                  <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
-                  <span className="truncate flex-1">{chat.title || 'Untitled Chat'}</span>
-                  <ArrowRight className={`w-3 h-3 transition-transform shrink-0 ${isActive ? 'translate-x-0.5 text-cyan-400' : 'opacity-0 group-hover:opacity-100 text-slate-500'}`} />
+                  <MessageSquare
+                    className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-cyan-400" : "text-slate-500"}`}
+                  />
+                  <span className="truncate flex-1">
+                    {chat.title || "Untitled Chat"}
+                  </span>
+                  <DeleteIcon
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDelete(chat.id);
+                    }}
+                    className={
+                      "w-5 h-5 transition-transform shrink-0 translate-x-0.5 text-cyan-400 opacity-0 group-hover:opacity-100 hover:text-purple-600"
+                    }
+                  />
                 </button>
               );
             })
@@ -112,7 +139,7 @@ export default function Sidebar({
             U
           </div>
           <span className="text-xs font-semibold text-slate-300 truncate">
-            User Session
+            User 0
           </span>
         </div>
         <button

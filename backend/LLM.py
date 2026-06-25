@@ -59,7 +59,7 @@ Follow these rules based on what the image contains:
 Always start your response with a one-word category tag in brackets, like [movie], [app], 
 [code], [brand], [quote], or [general]. Then give a concise 2-4 sentence note capturing 
 the key identifying details — title, name, or text exactly as it appears, followed by 
-context about what it is and why someone might save it."""
+context about what it is and why someone might save it. after each discrpition separate sentence with a period."""
 
 def Img_Analysis(url: str):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
