@@ -8,18 +8,15 @@ import AIAnswerPanel from "./components/AIAnswerPanel";
 import ChatInput from "./components/ChatInput";
 import ViewNote from "./components/ViewNote";
 import Upload from "./components/Upload";
+import Folder from "./components/Folder";
 import { FastForward } from "lucide-react";
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [notes, setNotes] = useState([]);
   const [chats, setChats] = useState([]);
-  const [folder, setFolder] = useState([
-    "Trading and Finance",
-    "Website Design",
-    "Trading and Finance",
-    "Website Design",
-  ]);
+  const [folder, setFolder] = useState([]);
+  const [group, setGroup] = useState();
 
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -28,6 +25,7 @@ export default function App() {
   const [noteViewLoading, setViewLoading] = useState(false);
   const [noteViewId, setNoteViewId] = useState("");
   const [isUploadOpen, setUploadOpen] = useState(false);
+  const [isFolderOpen, setFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pinnedIds, setPinnedIds] = useState(() => {
     const saved = localStorage.getItem("pinned_notes");
@@ -104,9 +102,9 @@ export default function App() {
   // Safe unpacked data getters to prevent React rendering crashes
   const getSafeNotes = () => {
     if (!notes) return [];
-    if (Array.isArray(notes)) return notes;
-    if (notes.notes && Array.isArray(notes.notes)) return notes.notes;
-    if (notes.data && Array.isArray(notes.data)) return notes.data;
+    if (Array.isArray(notes)) {
+      return notes.filter((note) => note?.group === -1);
+    }
     return [];
   };
 
@@ -117,6 +115,26 @@ export default function App() {
     if (chats.data && Array.isArray(chats.data)) return chats.data;
     return [];
   };
+
+  const setFolders = () => {
+    if (!notes || !Array.isArray(notes)) {
+      setFolder([]);
+      return;
+    }
+
+    const folderSet = new Set();
+    notes.forEach((note) => {
+      if (note?.group !== -1) {
+        folderSet.add(note.group);
+      }
+    });
+    console.log("Folders found:", Array.from(folderSet));
+    setFolder(Array.from(folderSet));
+  };
+
+  useEffect(() => {
+    setFolders();
+  }, [notes]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "Recently";
@@ -149,7 +167,6 @@ export default function App() {
     setNoteCreationLoading(true);
     try {
       const newNote = await api.addNote(noteData);
-      // Optimistically append note if backend returns it, else refetch list
       if (newNote && newNote.id) {
         setNotes((prev) => {
           const currentList = getSafeNotes();
@@ -168,11 +185,14 @@ export default function App() {
 
   const handleUploading = async (noteData) => {
     try {
+      if (!noteData.source_url) {
+        alert("image is required.");
+        return;
+      }
       const newUpload = await api.uploadImg(noteData);
       console.log(newUpload);
-      // Optimistically append note if backend returns it, else refetch list
       if (newUpload && newUpload.id) {
-        setNotes((prev) => {
+        setNotes(() => {
           const currentList = getSafeNotes();
           return [newUpload, ...currentList];
         });
@@ -191,7 +211,6 @@ export default function App() {
     try {
       setViewLoading(true);
       const newNote = await api.editNote(noteData);
-      // Optimistically append note if backend returns it, else refetch list
       if (newNote && newNote.id) {
         const modified = notes.filter((note) => note.id != newNote.id);
         setNotes([newNote, ...modified]);
@@ -241,7 +260,7 @@ export default function App() {
     const query = inputVal;
     setInputVal("");
     setSearchQuery(query);
-    setIsSearchActive(true); // compress notes grid, slide out panel
+    setIsSearchActive(true);
     setAiResponse("");
     setIsStreaming(true);
 
@@ -279,7 +298,6 @@ export default function App() {
         }
       }
 
-      // Streaming completed successfully, trigger logs on the backend
       try {
         let chatResult = activeHistoryItem || "";
         if (!activeHistoryItem) {
@@ -299,7 +317,6 @@ export default function App() {
         ]);
         setUserQuery(fetchedUserQuery || []);
         setAiRes(fetchedAiRes || []);
-        // Refresh Chats list in the sidebar
         await api.getChats().then(setChats);
       } catch (logErr) {
         console.error("Failed to log chat conversation:", logErr);
@@ -326,7 +343,6 @@ export default function App() {
     setActiveHistoryItem(chatItem);
     setSearchQuery(chatItem.title || "Conversation");
 
-    // Find recorded message inside chat logs
     let responseContent =
       chatItem.response || chatItem.answer || chatItem.content || "";
     if (!responseContent && chatItem.messages && chatItem.messages.length > 0) {
@@ -340,11 +356,23 @@ export default function App() {
         "This conversation summary was recorded. No detailed message body was stored.",
     );
     setCitations([]);
-    setIsSearchActive(true); // Compresses notes grid, slides out panel
+    setIsSearchActive(true);
   };
 
-  const handleGrouping = async () => {};
+  const handleGrouping = async () => {
+    console.log("Grouping notes by group field...");
+    const res = await api.groupNotes();
+    if (res) {
+      setFolders();
+    } else {
+      alert("error");
+    }
+  };
 
+  const openFolder = (group) => {
+    setFolderOpen(true);
+    setGroup(group);
+  };
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
       {/* Sidebar - Left Panel */}
@@ -387,6 +415,7 @@ export default function App() {
             setNoteViewId={setNoteViewId}
             setNoteViewOpen={setNoteViewOpen}
             openUpload={setUploadOpen}
+            openFolder={openFolder}
           />
 
           {/* AI Answer Panel - Slide out layout */}
@@ -436,6 +465,20 @@ export default function App() {
         onSubmit={handleUploading}
         loading={uploading}
         setLoading={setUploading}
+      />
+      <Folder
+        isOpen={isFolderOpen}
+        setView={setFolderOpen}
+        notes={notes}
+        group={group}
+        onTogglePin={togglePin}
+        onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+        isSearchActive={isSearchActive}
+        formatDate={formatDate}
+        handleDeleteNote={handleDeleteNote}
+        onSelectTag={(tag) => setInputVal(`#${tag}`)}
+        setNoteViewId={setNoteViewId}
+        setNoteViewOpen={setNoteViewOpen}
       />
     </div>
   );

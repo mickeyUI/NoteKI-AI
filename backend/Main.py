@@ -228,17 +228,23 @@ def AddMsg(msg: CreateMessage , db = Depends(get_db)):
     db.refresh(newMsg)
     return newMsg
 
-@app.get("/Group")
+@app.put("/Group")
 def GroupNotes(userID = Depends(get_current_user), db = Depends(get_db)):
-    notes= db.query(Note).filter(Note.user_id == userID, Note.group == 'none').all()
+    notes= db.query(Note).filter(Note.user_id == userID).all()
     embeddings = np.array([ note.embedding for note in notes])
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=2,
-        min_samples=2,
+        min_samples=1,
         metric='euclidean'
     )
+    embeddings = np.array(embeddings)
     labels = clusterer.fit_predict(embeddings)
-    return labels.tolist() 
+    labelLst = labels.tolist()
+    for note, label  in zip(notes, labelLst):
+        note.group = label
+    db.commit()
+    return "suces"
+        
     
    
 

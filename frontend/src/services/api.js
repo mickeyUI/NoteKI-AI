@@ -61,6 +61,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({
         title: note.title,
+        content: note.content,
         tags: note.tags,
         source_url: note.source_url || "",
       }),
@@ -123,5 +124,10 @@ export const api = {
         content: question,
         role: role,
       }),
+    }),
+
+  groupNotes: () =>
+    apiRequest("/Group", {
+      method: "PUT",
     }),
 };

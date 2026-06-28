@@ -22,7 +22,7 @@ export default function Sidebar({
   onLogout,
   onOpenCreateNoteModal,
   toggleDelete,
-  HandleGrouping,
+  handleGrouping,
 }) {
   return (
     <aside className="w-64 border-r border-white/5 bg-slate-950/70 backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
@@ -35,7 +35,7 @@ export default function Sidebar({
           </span>
         </div>
         <button
-          onClick={HandleGrouping}
+          onClick={() => handleGrouping()}
           className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
           title="Group Notes"
         >

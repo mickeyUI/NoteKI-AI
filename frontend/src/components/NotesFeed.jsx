@@ -28,6 +28,7 @@ export default function NotesFeed({
   setNoteViewId,
   setNoteViewOpen,
   openUpload,
+  openFolder,
 }) {
   return (
     <section
@@ -110,12 +111,13 @@ export default function NotesFeed({
                   : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               }`}
             >
-              {folders.map((folder, indx) => (
+              {folders.map((numb, indx) => (
                 <div
                   key={indx}
+                  onClick={() => openFolder(numb)}
                   className=" rounded-2xl border border-black/0  hover:border-blue-600 p-5 flex  justify-between min-h-[60px] relative bg-blue-900/50 transition-all duration-500 ease-in-out"
                 >
-                  <h1>{folder}</h1>
+                  <h1>{numb}</h1>
                   <button
                     title="ungroup"
                     className="border rounded-sm transition-all duration-500 ease-in-out bg-gray-600 hover:bg-violet-700 hover:border-violet-700 "

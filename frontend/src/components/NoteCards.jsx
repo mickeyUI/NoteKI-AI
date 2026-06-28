@@ -28,7 +28,7 @@ export default function NoteCards({
         e.stopPropagation();
         toggleVisable(note.id);
       }}
-      className={`glass-panel glass-panel-hover rounded-2xl p-5 flex flex-col justify-between min-h-[190px] relative group select-none ${
+      className={`glass-panel glass-panel-hover rounded-2xl p-5 flex flex-col justify-between min-w-[280px] min-h-[190px] relative group select-none ${
         isPinned ? "border-amber-400 border-2" : ""
       }`}
     >

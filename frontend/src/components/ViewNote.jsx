@@ -1,64 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Sparkles, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { X, Plus, Sparkles, Loader2 } from "lucide-react";
 
-export default function ViewNote({ isOpen, setView, onSubmit, loading, noteid, setid, notes }) {
-    const [id, setId]= useState('')
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [tags, setTags] = useState('');
-    const [sourceUrl, setSourceUrl] = useState('');
-    const [creation, setCreated] = useState('');
-    
-    // When noteid changes, find and populate the note data
-    useEffect(() => {
-        if (noteid && notes.length > 0) {
-            const selectedNote = notes.find(note => note.id == noteid);
-            if (selectedNote) {
-                setId(selectedNote.id)
-                setTitle(selectedNote.title || '');
-                setContent(selectedNote.content || '');
-                setTags(selectedNote.tags || '');
-                setSourceUrl(selectedNote.source_url || '');
-                setCreated(selectedNote.created_at || '');
-                
-            }
-        }
-    }, [noteid, notes, isOpen]);
-    
-    if (!isOpen) return null;
-  
-    const formatDate = (dateStr) => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit"
-  })
-}
+export default function ViewNote({
+  isOpen,
+  setView,
+  onSubmit,
+  loading,
+  noteid,
+  setid,
+  notes,
+}) {
+  const [id, setId] = useState("");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [creation, setCreated] = useState("");
+
+  // When noteid changes, find and populate the note data
+  useEffect(() => {
+    if (noteid && notes.length > 0) {
+      const selectedNote = notes.find((note) => note.id == noteid);
+      if (selectedNote) {
+        setId(selectedNote.id);
+        setTitle(selectedNote.title || "");
+        setContent(selectedNote.content || "");
+        setTags(selectedNote.tags || "");
+        setSourceUrl(selectedNote.source_url || "");
+        setCreated(selectedNote.created_at || "");
+      }
+    }
+  }, [noteid, notes, isOpen]);
+
+  if (!isOpen) return null;
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title || !content) return;
 
     // Split tags by comma, trim white spaces, filter out empty fields
     const tagArray = tags
-      .split(',')
+      .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
     onSubmit({
-        id,
+      id,
       title,
       content,
       tags: tagArray.toString(),
-      sourceUrl
+      sourceUrl,
     });
-
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 select-none">
       {/* Backdrop mask */}
-      <div 
+      <div
         className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
         onClick={() => setView(false)}
       />
@@ -79,7 +85,9 @@ export default function ViewNote({ isOpen, setView, onSubmit, loading, noteid, s
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">View Note</h2>
-            <p className="text-xs text-slate-400 font-medium">Add a note or resource to your AI knowledge base</p>
+            <p className="text-xs text-slate-400 font-medium">
+              Add a note or resource to your AI knowledge base
+            </p>
           </div>
         </div>
 
@@ -137,7 +145,7 @@ export default function ViewNote({ isOpen, setView, onSubmit, loading, noteid, s
               placeholder="https://example.com/docs"
             />
           </div>
-              <span className='text-sm'>created at: {formatDate(creation)}</span>
+          <span className="text-sm">created at: {formatDate(creation)}</span>
 
           {/* Form Actions */}
           <div className="flex gap-4 pt-3">

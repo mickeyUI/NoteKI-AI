@@ -29,6 +29,7 @@ class ReturnNotes(BaseModel):
     tags: str
     source_url: str
     note_type: str
+    group: int
     created_at: datetime
     updated_at: datetime
     
