@@ -29,7 +29,7 @@ class ReturnNotes(BaseModel):
     tags: str
     source_url: str
     note_type: str
-    group: int
+    group: str
     created_at: datetime
     updated_at: datetime
     
@@ -48,6 +48,9 @@ class CreateMessage(BaseModel):
 
 class ReciveID(BaseModel):
     id: UUID
+
+class ReciveGroup(BaseModel):
+    group: str
 
 class EditNote(BaseModel):
     id: UUID

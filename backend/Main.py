@@ -1,11 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, EditNote
+from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, ReciveGroup, EditNote
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
-from LLM import get_embedding, generate, Img_Analysis
+from LLM import get_embedding, generate, Img_Analysis, Name_Group
 from fastapi.responses import StreamingResponse
 import json
 import numpy as np
@@ -22,7 +22,7 @@ app.add_middleware(
     expose_headers=["X-Citation"]
 )
 
-"""def get_current_user(authorization: str = Header(None)):
+def get_current_user(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="No token provided")
 
@@ -35,10 +35,10 @@ app.add_middleware(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return payload["user_id"]"""
+    return payload["user_id"]
 
-def get_current_user():
-    return "9406351d-ddcd-42f5-85e1-7c86270225b3"
+"""def get_current_user():
+    return "9406351d-ddcd-42f5-85e1-7c86270225b3"""
 
 @app.post("/Register")
 def RegisterUser(register: Register, db = Depends(get_db)):
@@ -63,7 +63,10 @@ def LoginUser(login: Login, db = Depends(get_db)):
 
 @app.post("/AddNote")
 def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
-    embeded = get_embedding(note.content)
+    toEmbed= note.content
+    if note.title: 
+        toEmbed= f'Title: {note.title}, content: {note.content}'
+    embeded = get_embedding(toEmbed)
     newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url )
     db.add(newNote)
     db.commit()
@@ -77,7 +80,10 @@ def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depend
     
     try:
         content = Img_Analysis(note.source_url)
-        embeded = get_embedding(content.content)
+        toEmbed= content.content
+        if note.title: 
+            toEmbed= f'Title: {note.title}, content: {content.content}'
+        embeded = get_embedding(toEmbed)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to analyze image: {str(e)}")
     
@@ -112,7 +118,10 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     note.content = newNote.content
     note.tags = newNote.tags
     note.source_url = newNote.source_url
-    note.embedding = get_embedding(newNote.content)
+    toEmbed= newNote.content
+    if newNote.title: 
+        toEmbed= f'Title: {newNote.title}, content: {newNote.content}'
+    note.embedding = get_embedding(toEmbed)
     note.updated_at= datetime.utcnow()
     db.commit()
     return {"edit": "sucessful"}
@@ -229,29 +238,50 @@ def AddMsg(msg: CreateMessage , db = Depends(get_db)):
     return newMsg
 
 @app.put("/Group")
-def GroupNotes(userID = Depends(get_current_user), db = Depends(get_db)):
-    notes= db.query(Note).filter(Note.user_id == userID).all()
-    embeddings = np.array([ note.embedding for note in notes])
+def GroupNotes(
+    userID=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    notes = db.query(Note).filter(Note.user_id == userID).all()
+
+    if not notes:
+        raise HTTPException(status_code=404, detail="No notes found")
+
+    embeddings = np.array([note.embedding for note in notes])
+
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=2,
         min_samples=1,
-        metric='euclidean'
+        metric="euclidean",
     )
-    embeddings = np.array(embeddings)
-    labels = clusterer.fit_predict(embeddings)
-    labelLst = labels.tolist()
-    for note, label  in zip(notes, labelLst):
-        note.group = label
+
+    labels = clusterer.fit_predict(embeddings).tolist()
+
+    clusters = {}
+    for note, label in zip(notes, labels):
+        if label == -1:
+            continue
+        clusters.setdefault(label, []).append(note)
+
+    # Name each cluster individually
+    group_names = {}
+    for label, group_notes in clusters.items():
+        snippet = "\n".join(
+            f"- {n.title}: {n.content[:200]}" for n in group_notes
+        )
+        group_names[label] = Name_Group(snippet)
+
+    for note, label in zip(notes, labels):
+        note.group = group_names.get(label, "none")
+
     db.commit()
-    return "suces"
-        
+
+    return {"groups": group_names}
     
-   
-
-
-
-
-
-
-
-
+@app.put("/UnGroup")
+def Ungroup(Group: ReciveGroup ,userID=Depends(get_current_user), db=Depends(get_db)):
+    notes= db.query(Note).filter(Note.group == Group.group).all()
+    for note in notes:
+        note.group = "none"
+    db.commit()
+    return {"ungrouped group:": Group.group}

@@ -21,7 +21,7 @@ class Note(Base):
     tags = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
     note_type= Column(String, nullable=True, default="text")
-    group= Column(Integer, nullable=True, default=-1)
+    group= Column(String, nullable=False, default= "none")
     created_at = Column(DateTime, default = datetime.utcnow , nullable=False)
     updated_at = Column(DateTime, default = datetime.utcnow , nullable=False)
 

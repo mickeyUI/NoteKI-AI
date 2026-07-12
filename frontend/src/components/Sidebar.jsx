@@ -9,6 +9,7 @@ import {
   LogOut,
   RefreshCw,
   FolderIcon,
+  ArrowLeftIcon,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -23,6 +24,7 @@ export default function Sidebar({
   onOpenCreateNoteModal,
   toggleDelete,
   handleGrouping,
+  handleCollapseSidebar,
 }) {
   return (
     <aside className="w-64 border-r border-white/5 bg-slate-950/70 backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
@@ -34,13 +36,22 @@ export default function Sidebar({
             NoteKI
           </span>
         </div>
-        <button
-          onClick={() => handleGrouping()}
-          className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
-          title="Group Notes"
-        >
-          <FolderIcon className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleGrouping()}
+            className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
+            title="Group Notes"
+          >
+            <FolderIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleCollapseSidebar(true)}
+            className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
+            title="Collapse Sidebar"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Pinned section */}

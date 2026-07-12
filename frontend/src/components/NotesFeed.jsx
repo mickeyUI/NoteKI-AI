@@ -29,6 +29,7 @@ export default function NotesFeed({
   setNoteViewOpen,
   openUpload,
   openFolder,
+  unGroupNotes,
 }) {
   return (
     <section
@@ -115,12 +116,16 @@ export default function NotesFeed({
                 <div
                   key={indx}
                   onClick={() => openFolder(numb)}
-                  className=" rounded-2xl border border-black/0  hover:border-blue-600 p-5 flex  justify-between min-h-[60px] relative bg-blue-900/50 transition-all duration-500 ease-in-out"
+                  className="glass-panel hover:translate-0.5  rounded-2xl shadow-2xl p-5 flex  justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out"
                 >
                   <h1>{numb}</h1>
                   <button
                     title="ungroup"
                     className="border rounded-sm transition-all duration-500 ease-in-out bg-gray-600 hover:bg-violet-700 hover:border-violet-700 "
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      unGroupNotes(numb);
+                    }}
                   >
                     <UngroupIcon className="w-5 h-5 " />
                   </button>

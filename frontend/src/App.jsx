@@ -9,14 +9,15 @@ import ChatInput from "./components/ChatInput";
 import ViewNote from "./components/ViewNote";
 import Upload from "./components/Upload";
 import Folder from "./components/Folder";
-import { FastForward } from "lucide-react";
+import { FastForward, Heading1 } from "lucide-react";
+import { Button } from "flowbite-react";
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [notes, setNotes] = useState([]);
   const [chats, setChats] = useState([]);
   const [folder, setFolder] = useState([]);
-  const [group, setGroup] = useState();
+  const [group, setGroup] = useState("");
 
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -31,6 +32,7 @@ export default function App() {
     const saved = localStorage.getItem("pinned_notes");
     return saved ? JSON.parse(saved) : [];
   });
+  const [SidebarCollapse, setSidebarCollapse] = useState(false);
 
   // AI Streaming States
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,7 +105,7 @@ export default function App() {
   const getSafeNotes = () => {
     if (!notes) return [];
     if (Array.isArray(notes)) {
-      return notes.filter((note) => note?.group === -1);
+      return notes.filter((note) => note?.group === "none");
     }
     return [];
   };
@@ -124,7 +126,7 @@ export default function App() {
 
     const folderSet = new Set();
     notes.forEach((note) => {
-      if (note?.group !== -1) {
+      if (note?.group !== "none") {
         folderSet.add(note.group);
       }
     });
@@ -363,9 +365,33 @@ export default function App() {
     console.log("Grouping notes by group field...");
     const res = await api.groupNotes();
     if (res) {
-      setFolders();
+      try {
+        const updatedNotes = await api.getNotes();
+        if (updatedNotes) {
+          setNotes(updatedNotes);
+        }
+      } catch (err) {
+        console.error("Failed to refresh notes after grouping:", err);
+      }
     } else {
-      alert("error");
+      alert("error, failed to group notes. Please try again.");
+    }
+  };
+
+  const handleUngrouping = async (folder) => {
+    console.log("Ungrouping notes in folder:", folder);
+    const res = await api.ungroupNotes(folder);
+    if (res) {
+      try {
+        const updatedNotes = await api.getNotes();
+        if (updatedNotes) {
+          setNotes(updatedNotes);
+        }
+      } catch (err) {
+        console.error("Failed to refresh notes after ungrouping:", err);
+      }
+    } else {
+      alert("error, failed to ungroup notes. Please try again.");
     }
   };
 
@@ -373,22 +399,33 @@ export default function App() {
     setFolderOpen(true);
     setGroup(group);
   };
+
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
+    <div className="flex  h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
       {/* Sidebar - Left Panel */}
-      <Sidebar
-        pinnedNotes={pinnedNotes}
-        chats={safeChats}
-        loadingChats={loadingChats}
-        activeHistoryItem={activeHistoryItem}
-        onViewHistory={handleViewHistoryChat}
-        onSelectShortcut={(title) => setInputVal(title)}
-        onTogglePin={togglePin}
-        onLogout={handleLogout}
-        onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
-        toggleDelete={handleDeleteChat}
-        handleGrouping={handleGrouping}
-      />
+      {!SidebarCollapse ? (
+        <Sidebar
+          pinnedNotes={pinnedNotes}
+          chats={safeChats}
+          loadingChats={loadingChats}
+          activeHistoryItem={activeHistoryItem}
+          onViewHistory={handleViewHistoryChat}
+          onSelectShortcut={(title) => setInputVal(title)}
+          onTogglePin={togglePin}
+          onLogout={handleLogout}
+          onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+          toggleDelete={handleDeleteChat}
+          handleGrouping={handleGrouping}
+          handleCollapseSidebar={setSidebarCollapse}
+        />
+      ) : (
+        <button
+          onClick={() => setSidebarCollapse(false)}
+          className="absolute -top-200 left-0 bg-amber h-20 w-20 bg-amber-950"
+        >
+          return
+        </button>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-screen relative overflow-hidden bg-[#030712]">
@@ -416,6 +453,7 @@ export default function App() {
             setNoteViewOpen={setNoteViewOpen}
             openUpload={setUploadOpen}
             openFolder={openFolder}
+            unGroupNotes={handleUngrouping}
           />
 
           {/* AI Answer Panel - Slide out layout */}

@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("token");
@@ -129,5 +129,12 @@ export const api = {
   groupNotes: () =>
     apiRequest("/Group", {
       method: "PUT",
+    }),
+  ungroupNotes: (folder) =>
+    apiRequest("/UnGroup", {
+      method: "PUT",
+      body: JSON.stringify({
+        group: folder,
+      }),
     }),
 };

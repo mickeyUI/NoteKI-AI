@@ -3,19 +3,25 @@ import requests
 import json
 from groq import Groq
 from dotenv import load_dotenv
+from google import genai
+from google.genai.types import EmbedContentConfig
 
 load_dotenv()
 
+api_key = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
 
-def get_embedding(text: str):
-    response = requests.post(
-        "http://localhost:11434/api/embeddings",
-        json={
-            "model": "nomic-embed-text",
-            "prompt": text
-        }
+
+def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
+    result = client.models.embed_content(
+        model="gemini-embedding-2",
+        contents=text,
+        config=EmbedContentConfig(
+            task_type=task_type,
+            output_dimensionality=768,
+        ),
     )
-    return response.json()["embedding"]
+    return result.embeddings[0].values
 
 def generate(prompt: str):
     groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -88,5 +94,25 @@ def Img_Analysis(url: str):
         stream=False,
         stop=None,
     )
-
     return completion.choices[0].message
+
+
+def Name_Group(notes_snippet: str) -> str:
+    """
+    Takes a string of note titles and content snippets,
+    returns a 2-4 word group name from the LLM.
+    """
+    prompt = f"""Here are a group of related notes from someone's personal knowledge base:
+
+{notes_snippet}
+
+Give this group a short, descriptive name (2-4 words max) that captures what they have in common.
+Reply with ONLY the group name, nothing else."""
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=20,
+        stream=False
+    )
+    return response.choices[0].message.content.strip()
