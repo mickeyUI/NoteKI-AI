@@ -9,8 +9,10 @@ import {
   SearchIcon,
   UploadIcon,
   UngroupIcon,
+  ArrowBigRight,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function NotesFeed({
   loadingNotes = false,
@@ -30,7 +32,10 @@ export default function NotesFeed({
   openUpload,
   openFolder,
   unGroupNotes,
+  isShowing,
+  setPullSidebar,
 }) {
+  const MotionNoteCard = motion.create(NoteCards);
   return (
     <section
       className={`h-full overflow-y-auto px-6 md:px-8 py-8 transition-all duration-500 ease-in-out flex flex-col ${
@@ -39,7 +44,15 @@ export default function NotesFeed({
     >
       {/* Upper title menu */}
       <div className="flex items-center justify-between mb-8">
-        <div>
+        {isShowing && (
+          <button
+            onClick={() => setPullSidebar(false)}
+            className="absolute -left-1"
+          >
+            <ArrowBigRight className="w-15 h-15 opacity-25 hover:opacity-50" />
+          </button>
+        )}
+        <div className="ml-8">
           <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
             My Knowledge Base
           </h1>
@@ -135,30 +148,49 @@ export default function NotesFeed({
           )}
 
           {/*  Notes grid / masonry layout */}
-          <div
-            className={`grid mb-24 gap-6 transition-all duration-500 ease-in-out ${
-              isSearchActive
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            }`}
-          >
-            {[...pinnedNotes, ...standardNotes].map((note) => {
-              if (!note) return null;
-              const isPinned = pinnedIds.includes(note.id);
-              return (
-                <NoteCards
-                  key={note.id}
-                  note={note}
-                  isPinned={isPinned}
-                  onTogglePin={onTogglePin}
-                  onSelectTag={onSelectTag}
-                  formatDate={formatDate}
-                  handleDeleteNote={handleDeleteNote}
-                  setNoteViewId={setNoteViewId}
-                  setNoteViewOpen={setNoteViewOpen}
-                />
-              );
-            })}
+          <div>
+            <motion.div
+              layout
+              className={`grid mb-24 gap-6 transition-all duration-500 ease-in-out ${
+                isSearchActive
+                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              }`}
+            >
+              <AnimatePresence mode="popLayout">
+                {[...pinnedNotes, ...standardNotes].map((note) => {
+                  if (!note) return null;
+
+                  const isPinned = pinnedIds.includes(note.id);
+
+                  return (
+                    <motion.div
+                      key={note.id}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{
+                        layout: {
+                          duration: 0.3,
+                        },
+                      }}
+                    >
+                      <NoteCards
+                        note={note}
+                        isPinned={isPinned}
+                        onTogglePin={onTogglePin}
+                        onSelectTag={onSelectTag}
+                        formatDate={formatDate}
+                        handleDeleteNote={handleDeleteNote}
+                        setNoteViewId={setNoteViewId}
+                        setNoteViewOpen={setNoteViewOpen}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
           </div>
         </>
       )}

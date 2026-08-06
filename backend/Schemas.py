@@ -58,3 +58,11 @@ class EditNote(BaseModel):
     content: str
     tags: str
     source_url: str
+
+class noticas(BaseModel):
+    title: Optional[str] = "New Note"
+    content: str
+    tags: str
+
+class lstofnotes(BaseModel):
+    notes: list[noticas]

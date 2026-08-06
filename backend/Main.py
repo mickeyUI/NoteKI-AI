@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, ReciveGroup, EditNote
+from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, ReciveGroup, EditNote, lstofnotes
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
@@ -22,23 +22,23 @@ app.add_middleware(
     expose_headers=["X-Citation"]
 )
 
-def get_current_user(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="No token provided")
+# def get_current_user(authorization: str = Header(None)):
+#     if not authorization:
+#         raise HTTPException(status_code=401, detail="No token provided")
 
-    try:
-        token = authorization.split(" ")[1]  # "Bearer <token>"
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token format")
+#     try:
+#         token = authorization.split(" ")[1]  # "Bearer <token>"
+#     except:
+#         raise HTTPException(status_code=401, detail="Invalid token format")
 
-    payload = verify_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+#     payload = verify_token(token)
+#     if not payload:
+#         raise HTTPException(status_code=401, detail="Invalid token")
 
-    return payload["user_id"]
+#     return payload["user_id"]
 
-"""def get_current_user():
-    return "9406351d-ddcd-42f5-85e1-7c86270225b3"""
+def get_current_user():
+    return "9406351d-ddcd-42f5-85e1-7c86270225b3"
 
 @app.post("/Register")
 def RegisterUser(register: Register, db = Depends(get_db)):
@@ -67,10 +67,21 @@ def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(g
     if note.title: 
         toEmbed= f'Title: {note.title}, content: {note.content}'
     embeded = get_embedding(toEmbed)
+    if not(embeded):
+        return
     newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url )
     db.add(newNote)
     db.commit()
-    return {"Note": "Added"}
+    return {  'id': newNote.id, 
+            'title': newNote.title, 
+            'content': newNote.content, 
+            'tags': newNote.tags, 
+            'source_url': newNote.source_url, 
+            'note_type': newNote.note_type, 
+            'group': newNote.group,
+            'created_at': newNote.created_at,
+            'updated_at': newNote.updated_at
+        }
 
 @app.post("/UploadImg")
 def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depends(get_db)):
@@ -285,3 +296,16 @@ def Ungroup(Group: ReciveGroup ,userID=Depends(get_current_user), db=Depends(get
         note.group = "none"
     db.commit()
     return {"ungrouped group:": Group.group}
+
+# kinda experimental for note population
+@app.post("/Populate")
+def Populate(Data: lstofnotes, userID= Depends(get_current_user), db= Depends(get_db)):
+    for note in Data.notes:
+        toEmbed= note.content
+        if note.title: 
+            toEmbed= f'Title: {note.title}, content: {note.content}'
+        embeded = get_embedding(toEmbed)
+        newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = "" )
+        db.add(newNote)
+    db.commit()
+    return {"Note": "Added"}

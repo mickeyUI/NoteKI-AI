@@ -32,7 +32,6 @@ export default function App() {
     const saved = localStorage.getItem("pinned_notes");
     return saved ? JSON.parse(saved) : [];
   });
-  const [SidebarCollapse, setSidebarCollapse] = useState(false);
 
   // AI Streaming States
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,6 +49,8 @@ export default function App() {
   // General status indicators
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingChats, setLoadingChats] = useState(false);
+  const [grouping, setGrouping] = useState(false);
+  const [pullSidebar, setPullSidebar] = useState(false);
 
   if (!token) {
     return <AuthPage onAuthSuccess={setToken} />;
@@ -169,6 +170,10 @@ export default function App() {
     setNoteCreationLoading(true);
     try {
       const newNote = await api.addNote(noteData);
+      if (!newNote) {
+        alert("Failed to create note. Please try again.");
+        return;
+      }
       if (newNote && newNote.id) {
         setNotes((prev) => {
           const currentList = getSafeNotes();
@@ -366,12 +371,15 @@ export default function App() {
     const res = await api.groupNotes();
     if (res) {
       try {
+        setGrouping(true);
         const updatedNotes = await api.getNotes();
         if (updatedNotes) {
           setNotes(updatedNotes);
         }
       } catch (err) {
         console.error("Failed to refresh notes after grouping:", err);
+      } finally {
+        setGrouping(false);
       }
     } else {
       alert("error, failed to group notes. Please try again.");
@@ -403,7 +411,7 @@ export default function App() {
   return (
     <div className="flex  h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
       {/* Sidebar - Left Panel */}
-      {!SidebarCollapse ? (
+      {!pullSidebar && (
         <Sidebar
           pinnedNotes={pinnedNotes}
           chats={safeChats}
@@ -416,15 +424,9 @@ export default function App() {
           onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
           toggleDelete={handleDeleteChat}
           handleGrouping={handleGrouping}
-          handleCollapseSidebar={setSidebarCollapse}
+          Grouping={grouping}
+          pullButton={setPullSidebar}
         />
-      ) : (
-        <button
-          onClick={() => setSidebarCollapse(false)}
-          className="absolute -top-200 left-0 bg-amber h-20 w-20 bg-amber-950"
-        >
-          return
-        </button>
       )}
 
       {/* Main Content Area */}
@@ -454,6 +456,8 @@ export default function App() {
             openUpload={setUploadOpen}
             openFolder={openFolder}
             unGroupNotes={handleUngrouping}
+            isShowing={pullSidebar}
+            setPullSidebar={setPullSidebar}
           />
 
           {/* AI Answer Panel - Slide out layout */}

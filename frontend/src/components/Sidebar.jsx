@@ -10,6 +10,7 @@ import {
   RefreshCw,
   FolderIcon,
   ArrowLeftIcon,
+  Loader2,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -25,6 +26,8 @@ export default function Sidebar({
   toggleDelete,
   handleGrouping,
   handleCollapseSidebar,
+  Grouping,
+  pullButton,
 }) {
   return (
     <aside className="w-64 border-r border-white/5 bg-slate-950/70 backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
@@ -42,10 +45,14 @@ export default function Sidebar({
             className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
             title="Group Notes"
           >
-            <FolderIcon className="w-4 h-4" />
+            {Grouping ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <FolderIcon className="w-4 h-4" />
+            )}
           </button>
           <button
-            onClick={() => handleCollapseSidebar(true)}
+            onClick={() => pullButton(true)}
             className="p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointer"
             title="Collapse Sidebar"
           >

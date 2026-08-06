@@ -12,16 +12,20 @@ api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
 
-def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
-    result = client.models.embed_content(
-        model="gemini-embedding-2",
-        contents=text,
-        config=EmbedContentConfig(
-            task_type=task_type,
-            output_dimensionality=768,
-        ),
-    )
-    return result.embeddings[0].values
+def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
+    try:
+        result = client.models.embed_content(
+            model="gemini-embedding-2",
+            contents=text,
+            config=EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=768,
+            ),
+        )
+        if (result.embeddings is not None):
+            return result.embeddings[0].values
+    except: 
+        return 
 
 def generate(prompt: str):
     groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
