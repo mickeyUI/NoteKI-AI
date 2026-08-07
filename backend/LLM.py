@@ -39,42 +39,95 @@ def generate(prompt: str):
         if content:
             yield content
 
-prompt_text = """You are analyzing a screenshot or image saved to someone's personal 
-knowledge base. Your job is to identify WHAT this is and extract the information that 
-would make it findable later through search.
+prompt_text = """
+Analyze this image and produce a search-optimized description for semantic retrieval.
 
-Follow these rules based on what the image contains:
+Your goal is NOT to describe the image naturally. Your goal is to generate text that will produce high-quality vector embeddings for later search.
 
-- If it's a movie/TV show poster or title card: identify the exact title, genre, and 
-  any visible cast or director names. Note that this is a movie/show recommendation or 
-  reference.
+Rules:
 
-- If it's a website, app, or product screenshot: identify the name of the website/app/
-  product, what it does or offers, and the category it belongs to (e.g. productivity tool, 
-  online shop, SaaS platform, recipe site).
+- Identify the primary category.
+- Extract every visible proper name, title, brand, product, person, company, framework, library, language, location, or organization.
+- Preserve exact spellings whenever possible.
+- Include important keywords someone would naturally search for.
+- Mention the purpose or topic.
+- Include common aliases or synonyms when appropriate.
+- Do not invent information that is not visible or strongly implied.
 
-- If it's a code snippet, programming screenshot, or technical content: identify the 
-  programming language, the concept or library being shown, and summarize what the code 
-  does. Mention this is a coding/technical reference.
+Category-specific instructions:
 
-- If it's a logo or brand: identify the company/brand name and what industry or product 
-  category it's associated with.
+Movie / TV:
+- Title
+- Genre
+- Actors, director, studio if visible
+- Themes
+- Mention this is entertainment content.
 
-- If it's a quote, meme, or text-based image: extract the exact text and summarize the 
-  underlying message or topic.
+Website / App / Product:
+- Name
+- Purpose
+- Main features visible
+- Product category
+- Company if visible
 
-- For anything else: identify the core subject and what real-world category it falls 
-  under (travel, fitness, fashion, finance, etc).
+Programming / Technical:
+- Programming language
+- Frameworks
+- Libraries
+- APIs
+- Algorithms
+- Error messages
+- Technologies
+- What the code accomplishes
+- Mention this is programming reference material.
 
-Always start your response with a one-word category tag in brackets, like [movie], [app], 
-[code], [brand], [quote], or [general]. Then give a concise 2-4 sentence note capturing 
-the key identifying details — title, name, or text exactly as it appears, followed by 
-context about what it is and why someone might save it. after each discrpition separate sentence with a period."""
+Books / Articles / Documents:
+- Title
+- Author
+- Main subject
+- Keywords
+- Topic
 
+Brand / Logo:
+- Brand name
+- Company
+- Industry
+- Products or services
+
+Quote / Meme:
+- Extract all readable text exactly.
+- Identify topic.
+- Identify sentiment if obvious.
+- Mention if humorous, motivational, educational, etc.
+
+Charts / Diagrams:
+- Topic
+- Variables
+- Labels
+- Main takeaway
+
+General images:
+- Describe the main subject.
+- Mention important objects.
+- Mention location if identifiable.
+- Mention activity or context.
+
+Output format:
+
+[category]
+
+Search Description:
+A compact paragraph containing important searchable entities, names, keywords, topics, and context. Prioritize nouns and identifying information over natural writing.
+
+Keywords:
+keyword1, keyword2, keyword3, keyword4, ...
+
+Return only the output.
+"""
 def Img_Analysis(url: str):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     completion = client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model="qwen/qwen3.6-27b",
         messages=[
             {
                 "role": "user",
@@ -93,7 +146,9 @@ def Img_Analysis(url: str):
             }
         ],
         temperature=1,
-        max_completion_tokens=1024,
+        reasoning_effort="none",      
+        reasoning_format="hidden",    
+        max_completion_tokens=300,
         top_p=1,
         stream=False,
         stop=None,

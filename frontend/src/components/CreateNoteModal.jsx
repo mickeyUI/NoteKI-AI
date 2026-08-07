@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { X, Plus, Sparkles, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import { X, Plus, Sparkles, Loader2 } from "lucide-react";
 
-export default function CreateNoteModal({ isOpen, onClose, onSubmit, loading }) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [tags, setTags] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
+export default function CreateNoteModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  loading,
+}) {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [tags, setTags] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
 
   if (!isOpen) return null;
 
@@ -15,7 +20,7 @@ export default function CreateNoteModal({ isOpen, onClose, onSubmit, loading }) 
 
     // Split tags by comma, trim white spaces, filter out empty fields
     const tagArray = tags
-      .split(',')
+      .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
@@ -27,16 +32,16 @@ export default function CreateNoteModal({ isOpen, onClose, onSubmit, loading }) 
     });
 
     // Reset values
-    setTitle('');
-    setContent('');
-    setTags('');
-    setSourceUrl('');
+    setTitle("");
+    setContent("");
+    setTags("");
+    setSourceUrl("");
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
       {/* Backdrop mask */}
-      <div 
+      <div
         className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
         onClick={onClose}
       />
@@ -57,62 +62,52 @@ export default function CreateNoteModal({ isOpen, onClose, onSubmit, loading }) 
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">Create New Memory</h2>
-            <p className="text-xs text-slate-400 font-medium">Add a note or resource to your AI knowledge base</p>
+            <p className="text-xs text-slate-400 font-medium">
+              Add a note or resource to your AI knowledge base
+            </p>
           </div>
         </div>
 
         {/* Fields */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Title
-            </label>
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="space-y-1">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
-              placeholder="e.g. Core architectural principles of React"
+              placeholder="TITLE"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Content
-            </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="glass-input w-full min-h-[120px] max-h-[240px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
-              placeholder="Write the core details, ideas, or insights..."
+              placeholder="Take a note, ideas, or insights..."
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Tags (Comma separated)
-            </label>
             <input
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
-              placeholder="e.g. frontend, react, tips"
+              placeholder="Tags e.g. frontend, react, tips"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Source URL (Optional)
-            </label>
             <input
               type="url"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
               className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
-              placeholder="https://example.com/docs"
+              placeholder="Source eg:https://example.com/docs"
             />
           </div>
 

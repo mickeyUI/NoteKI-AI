@@ -59,7 +59,7 @@ h6 {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 2px 100px 0 rgba(255, 255, 255, 0.044),
-    /* Deep, dark outer shadow */ 0 5px 15px 0 rgba(20, 20, 20, 0.3);
+    0 5px 15px 0 rgba(20, 20, 20, 0.3);
 }
 
 .glass-panel-hover {
@@ -73,10 +73,10 @@ h6 {
 }
 
 .glass-input {
-  background: rgba(3, 7, 18, 0.5);
+  background: rgba(1, 0, 4, 0.288);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* border: 1px solid rgba(255, 255, 255, 0.1); */
   transition: all 0.2s ease-in-out;
 }
 

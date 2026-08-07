@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { X, Plus, Sparkles, Loader2 } from "lucide-react";
+import { X, Plus, Sparkles, Loader2, Edit } from "lucide-react";
+import { disableInstantTransitions } from "framer-motion";
 
 export default function ViewNote({
   isOpen,
@@ -16,6 +17,7 @@ export default function ViewNote({
   const [tags, setTags] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [creation, setCreated] = useState("");
+  const [noteType, setNoteType] = useState("");
 
   // When noteid changes, find and populate the note data
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function ViewNote({
         setTags(selectedNote.tags || "");
         setSourceUrl(selectedNote.source_url || "");
         setCreated(selectedNote.created_at || "");
+        setNoteType(selectedNote.note_type || "");
       }
     }
   }, [noteid, notes, isOpen]);
@@ -65,7 +68,7 @@ export default function ViewNote({
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4 select-none">
       {/* Backdrop mask */}
       <div
-        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
         onClick={() => setView(false)}
       />
 
@@ -81,70 +84,67 @@ export default function ViewNote({
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400">
-            <Plus className="w-5 h-5 animate-pulse" />
+            <Edit className="w-5 h-5 animate-pulse" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">View Note</h2>
-            <p className="text-xs text-slate-400 font-medium">
-              Add a note or resource to your AI knowledge base
-            </p>
           </div>
         </div>
 
         {/* Fields */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Title
-            </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
-              placeholder="e.g. Core architectural principles of React"
+              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-2xl"
+              placeholder="Title"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Content
-            </label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="glass-input w-full min-h-[120px] max-h-[240px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
-              placeholder="Write the core details, ideas, or insights..."
-              required
-            />
+            {noteType == "text" ? (
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="glass-input w-full min-h-[120px] max-h-[240px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+                placeholder="Write the core details, ideas, or insights..."
+                required
+              />
+            ) : (
+              <div className="flex justify-center items-center">
+                <img
+                  src={sourceUrl}
+                  alt="img"
+                  className="max-h-[300px] rounded-2xl"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Tags (Comma separated)
-            </label>
             <input
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
-              placeholder="e.g. frontend, react, tips"
+              placeholder="Tags"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-              Source URL (Optional)
-            </label>
-            <input
-              type="url"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
-              placeholder="https://example.com/docs"
-            />
-          </div>
+          {sourceUrl == "text" && (
+            <div className="space-y-2">
+              <input
+                type="url"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+                placeholder="Source Url"
+              />
+            </div>
+          )}
           <span className="text-sm">created at: {formatDate(creation)}</span>
 
           {/* Form Actions */}

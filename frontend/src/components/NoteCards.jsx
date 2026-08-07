@@ -28,7 +28,7 @@ export default function NoteCards({
         e.stopPropagation();
         toggleVisable(note.id);
       }}
-      className={`glass-panel glass-panel-hover rounded-2xl p-5 flex flex-col justify-between min-w-[280px] min-h-[190px] relative group select-none ${
+      className={`glass-panel glass-panel-hover rounded-2xl p-5 flex flex-col justify-between min-w-[280px] ${note.note_type != "text" ? "h-[200px]" : null} max-h-[200px] relative group select-none ${
         isPinned ? "border-amber-400 border-2" : ""
       }`}
     >
@@ -62,19 +62,23 @@ export default function NoteCards({
       </div>
       {/* Header details */}
       <div>
-        <h3 className="text-base font-bold text-white mb-2 pr-8 group-hover:text-purple-300 transition-colors">
+        <h3
+          className={`text-base font-bold text-white mb-2 pr-8 group-hover:text-purple-300 transition-colors ${note.note_type != "text" ? "pl-5" : null}`}
+        >
           {note.title}
         </h3>
         {note.note_type === "text" ? (
-          <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 mb-4">
+          <p className="text-xs text-slate-400 leading-relaxed line-clamp-2 mb-4">
             {note.content}
           </p>
         ) : (
-          <img
-            src={note.source_url || null}
-            alt={note.title}
-            className="rounded-lg mb-4 max-h-40 object-cover"
-          />
+          <div className=" max-h-[120px] overflow-hidden absolute top-10 -z-1 left-8 rounded-2xl max-w-[240px]">
+            <img
+              src={note.source_url || null}
+              alt={note.title}
+              className="rounded-lg h-60 object-cover opacity-100 brightness-30 -z-1 "
+            />
+          </div>
         )}
       </div>
 
@@ -99,7 +103,7 @@ export default function NoteCards({
                     e.stopPropagation();
                     onSelectTag(tag);
                   }}
-                  className="text-[10px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full cursor-pointer hover:bg-purple-500/20 transition-all"
+                  className={`text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full cursor-pointer hover:bg-purple-500/20 transition-all ${note.note_type != "text" ? "ml-5" : null}`}
                 >
                   {tag}
                 </span>
@@ -108,7 +112,7 @@ export default function NoteCards({
           );
         })()}
 
-        <div className="flex items-center gap-1.5 text-slate-500 text-[10px]">
+        <div className="flex items-center justify-end gap-1.5 text-slate-500 text-[10px]">
           <Calendar className="w-3.5 h-3.5" />
           <span>{formatDate(note.updated_at)}</span>
         </div>

@@ -160,7 +160,7 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
     {
         "user_id": str(userID),
         "embedding": str(embeded),
-        "threshold": 0.44  # 0-1, identical-orthagonal respectivly
+        "threshold": 0.34  # 0-1, identical-orthagonal respectivly
     }).fetchall()
     if not(results):
         return "you have no notes that match you question"
@@ -187,28 +187,53 @@ Instructions:
     return StreamingResponse(generate(prompt), media_type="text/plain", headers={"X-Citation": citationStringified})
            
      
-@app.post("/search", response_model = list[str])
+@app.post("/search",)
 def Search(query: Question, userID = Depends(get_current_user), db = Depends(get_db)):
-    if not query:
-        raise HTTPException(status_code=404, detail="No query provided")
-    embeded = get_embedding(query.question)
-    results = db.execute(
-    text("""
-        SELECT title, content
-        FROM notes
-        WHERE user_id = :user_id
-        ORDER BY embedding <=> CAST(:embedding AS vector)
-        LIMIT 5
-    """),
-    {
-        "user_id": str(userID),
-        "embedding": str(embeded)
-    }).fetchall()
-    if not results:
-        raise HTTPException(status_code=404, detail="No results found")
-    
-    return results
+    try:
+        if not query:
+            raise HTTPException(status_code=404, detail="No query provided")
+        embeded = get_embedding(query.question)
+        results = db.execute(
+            text("""
+                SELECT
+                    id,
+                    title,
+                    content,
+                    tags,
+                    source_url,
+                    note_type,
+                    "group",
+                    created_at,
+                    updated_at
+                FROM notes
+                WHERE user_id = :user_id
+                ORDER BY embedding <=> CAST(:embedding AS vector)
+                LIMIT 5
+            """),
+            {
+                "user_id": str(userID),
+                "embedding": str(embeded),
+            },
+        ).fetchall()
+        if not results:
+            raise HTTPException(status_code=404, detail="No results found")
+        notes = [
+            {
+                "id": str(row[0]),
+                "title": row[1],
+                "content": row[2],
+                "tags": row[3],
+                "source_url": row[4],
+                "note_type": row[5],
+                "group": row[6],
+                "created_at": row[7].isoformat(),
+                "updated_at": row[8].isoformat(),
+            } for row in results ]
+        return notes
+    except Exception as e:
+        print(f"An unexpected error occurred: {type(e).__name__} - {e}")
 
+    
 @app.get("/Chats")
 def GetChats(userID = Depends(get_current_user), db = Depends(get_db)):
     chats = db.query(Converstions).filter(Converstions.user_id == userID).all()

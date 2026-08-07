@@ -137,4 +137,11 @@ export const api = {
         group: folder,
       }),
     }),
+  pgSearch: (Question) =>
+    apiRequest("/search", {
+      method: "POST",
+      body: JSON.stringify({
+        question: Question,
+      }),
+    }),
 };

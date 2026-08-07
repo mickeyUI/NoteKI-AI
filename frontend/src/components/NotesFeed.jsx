@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Plus,
   RefreshCw,
@@ -10,9 +10,12 @@ import {
   UploadIcon,
   UngroupIcon,
   ArrowBigRight,
+  X,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
+import SearchDisplayPopup from "./SearchDisplayPopup";
 import { AnimatePresence, motion } from "framer-motion";
+import { api } from "../services/api";
 
 export default function NotesFeed({
   loadingNotes = false,
@@ -35,7 +38,45 @@ export default function NotesFeed({
   isShowing,
   setPullSidebar,
 }) {
+  const [searchDisplayActive, setSearchDisplayActive] = useState(false);
+  const [pgSearchedNotes, setPgSearchedNotes] = useState([]);
+  const [pging, setPging] = useState(false);
+  const [search, setSearch] = useState("");
+  const notesToDisplay = [...pinnedNotes, ...standardNotes];
+  const filteredNotes = notesToDisplay.filter((note) => {
+    if (!search) {
+      return notesToDisplay;
+    }
+    const query = search.toLowerCase();
+    return (
+      note.title.toLowerCase().includes(query) ||
+      note.content.toLowerCase().includes(query) ||
+      note.tags.toLowerCase().includes(query)
+    );
+  });
   const MotionNoteCard = motion.create(NoteCards);
+
+  const runPgSearch = async () => {
+    if (!search) {
+      return;
+    }
+    try {
+      setSearchDisplayActive(true);
+      setPging(true);
+      const pgResults = await api.pgSearch(search);
+      setPgSearchedNotes(pgResults);
+    } catch (error) {
+      console.log("Faild PgSearching:", error.message);
+    } finally {
+      setPging(false);
+    }
+  };
+
+  const cancelSearch = () => {
+    // do something to cancel pg search here
+    setSearch("");
+    setSearchDisplayActive(false);
+  };
   return (
     <section
       className={`h-full overflow-y-auto px-6 md:px-8 py-8 transition-all duration-500 ease-in-out flex flex-col ${
@@ -61,11 +102,27 @@ export default function NotesFeed({
           </p>
         </div>
         <div className="flex gap-2">
-          <input
-            type="text"
-            className="bg-purple-950 rounded-2xl p-1 text-[15px] hover:border-2 hover:border-purple-700 border-1 border-purple-800"
-          />
-          <button className="border-0 p-2 rounded-2xl bg-gray-900 hover:bg-purple-950">
+          <div className="flex relative">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              type="text"
+              className="w-full bg-purple-950 rounded-2xl p-1 pr-8 text-[15px] hover:border-2 hover:border-purple-700 border-1 border-purple-800"
+            />
+            {search && (
+              <button
+                onClick={cancelSearch}
+                className="absolute right-0 flex justify-center items-center  p-2 "
+              >
+                <X className="h-5 w-5 opacity-25 hover:opacity-70 border-2 rounded-2xl" />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={runPgSearch}
+            className="border-0 p-2 rounded-2xl bg-gray-900 hover:bg-purple-950"
+          >
             <SearchIcon className="w-4 h-4 " />
           </button>
           <button
@@ -85,7 +142,21 @@ export default function NotesFeed({
           </button>
         </div>
       </div>
-
+      {searchDisplayActive && (
+        <SearchDisplayPopup
+          isOpen={searchDisplayActive}
+          queriedNotes={pgSearchedNotes}
+          loading={pging}
+          onTogglePin={onTogglePin}
+          onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+          isSearchActive={isSearchActive}
+          formatDate={formatDate}
+          handleDeleteNote={handleDeleteNote}
+          onSelectTag={(tag) => setInputVal(`#${tag}`)}
+          setNoteViewId={setNoteViewId}
+          setNoteViewOpen={setNoteViewOpen}
+        />
+      )}
       {loadingNotes ? (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-3">
           <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
@@ -158,7 +229,7 @@ export default function NotesFeed({
               }`}
             >
               <AnimatePresence mode="popLayout">
-                {[...pinnedNotes, ...standardNotes].map((note) => {
+                {filteredNotes.map((note) => {
                   if (!note) return null;
 
                   const isPinned = pinnedIds.includes(note.id);
