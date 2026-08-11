@@ -5,7 +5,7 @@ from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNote
 from Auth import hash_password, verify_password, create_access_token, verify_token
 from DB import get_db
 from Models import User, Note, Converstions, Messages
-from LLM import get_embedding, generate, Img_Analysis, Name_Group
+from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group
 from fastapi.responses import StreamingResponse
 import json
 import numpy as np
@@ -85,10 +85,8 @@ def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(g
 
 @app.post("/UploadImg")
 def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depends(get_db)):
-    # Validate URL before passing to Img_Analysis
     if not note.source_url or not (note.source_url.startswith("http://") or note.source_url.startswith("https://")):
         raise HTTPException(status_code=400, detail="Invalid image URL. Must be a valid http/https URL")
-    
     try:
         content = Img_Analysis(note.source_url)
         toEmbed= content.content
@@ -102,7 +100,16 @@ def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depend
                    tags = note.tags, source_url = note.source_url, note_type="img" )
     db.add(newNote)
     db.commit()
-    return {"img dis": content}
+    return {  'id': newNote.id, 
+            'title': newNote.title, 
+            'content': newNote.content, 
+            'tags': newNote.tags, 
+            'source_url': newNote.source_url, 
+            'note_type': newNote.note_type, 
+            'group': newNote.group,
+            'created_at': newNote.created_at,
+            'updated_at': newNote.updated_at
+        }
 
 
 @app.get("/GetNote/{noteID}", response_model= ReturnNotes)
@@ -135,7 +142,16 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     note.embedding = get_embedding(toEmbed)
     note.updated_at= datetime.utcnow()
     db.commit()
-    return {"edit": "sucessful"}
+    return  {  'id': newNote.id, 
+            'title': newNote.title, 
+            'content': newNote.content, 
+            'tags': newNote.tags, 
+            'source_url': newNote.source_url, 
+            'note_type': note.note_type, 
+            'group': note.group,
+            'created_at': note.created_at,
+            'updated_at': datetime.utcnow
+        }
 
 @app.delete("/DelNote")
 def DeleteNote(noteID: ReciveID, userID = Depends(get_current_user), db = Depends(get_db)):
@@ -148,6 +164,8 @@ def DeleteNote(noteID: ReciveID, userID = Depends(get_current_user), db = Depend
     
 @app.post("/question")
 def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get_db)):
+    # embedable = convertToEmbedable(question.question);
+    # print(embedable)
     embeded = get_embedding(question.question)
     results = db.execute(
     text("""
@@ -173,9 +191,7 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
 === NOTE START ===
 {context}
 === NOTE END ===
-
 Question:{question.question}
-
 Instructions:
 - Base your answers strictly on the note above. Do not add external knowledge unless the user explicitly asks for it.
 - If the note doesn't contain enough information to answer, say so clearly.

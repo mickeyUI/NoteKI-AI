@@ -11,35 +11,8 @@ load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-
-def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
-    try:
-        result = client.models.embed_content(
-            model="gemini-embedding-2",
-            contents=text,
-            config=EmbedContentConfig(
-                task_type=task_type,
-                output_dimensionality=768,
-            ),
-        )
-        if (result.embeddings is not None):
-            return result.embeddings[0].values
-    except: 
-        return 
-
-def generate(prompt: str):
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-    response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        stream=True
-    )
-    for chunk in response:
-        content = chunk.choices[0].delta.content
-        if content:
-            yield content
-
 prompt_text = """
+
 Analyze this image and produce a search-optimized description for semantic retrieval.
 
 Your goal is NOT to describe the image naturally. Your goal is to generate text that will produce high-quality vector embeddings for later search.
@@ -124,6 +97,52 @@ keyword1, keyword2, keyword3, keyword4, ...
 
 Return only the output.
 """
+
+def convertToEmbedable(text: str):
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    chatCompletion = groq_client.chat.completions.create(
+        messages=[{
+            "role": "system",
+            "content": """You are a search optimization engine for a vector database (pgvector). Your task is to expand the user's input question into
+            a semantically rich passage optimized for embedding similarity retrieval.Instructions:Rephrase the input question into a declarative summary
+            of the underlying concept.Include likely keywords, synonyms, technical terms, and related entities that a stored note on this topic would contain.
+            Output strictly raw text without conversational introductions, metadata, or markdown wrappers."""
+        },
+        {
+            "role": "user",
+            "content": text,
+        }],
+        model="llama-3.3-70b-versatile",
+    )
+    return chatCompletion.choices[0].message.content
+
+def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
+    try:
+        result = client.models.embed_content(
+            model="gemini-embedding-2",
+            contents=text,
+            config=EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=768,
+            ),
+        )
+        if (result.embeddings is not None):
+            return result.embeddings[0].values
+    except: 
+        return 
+
+def generate(prompt: str):
+    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    response = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True
+    )
+    for chunk in response:
+        content = chunk.choices[0].delta.content
+        if content:
+            yield content
+
 def Img_Analysis(url: str):
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     completion = client.chat.completions.create(
@@ -157,15 +176,9 @@ def Img_Analysis(url: str):
 
 
 def Name_Group(notes_snippet: str) -> str:
-    """
-    Takes a string of note titles and content snippets,
-    returns a 2-4 word group name from the LLM.
-    """
     prompt = f"""Here are a group of related notes from someone's personal knowledge base:
-
 {notes_snippet}
-
-Give this group a short, descriptive name (2-4 words max) that captures what they have in common.
+Give this group a short, descriptive name (2-3 words max) that captures what they have in common.
 Reply with ONLY the group name, nothing else."""
     groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     response = groq_client.chat.completions.create(

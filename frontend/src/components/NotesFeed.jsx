@@ -11,6 +11,7 @@ import {
   UngroupIcon,
   ArrowBigRight,
   X,
+  Menu,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
 import SearchDisplayPopup from "./SearchDisplayPopup";
@@ -88,12 +89,12 @@ export default function NotesFeed({
         {isShowing && (
           <button
             onClick={() => setPullSidebar(false)}
-            className="absolute -left-1"
+            className="absolute -left-6 hover:left-1 p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointe"
           >
-            <ArrowBigRight className="w-15 h-15 opacity-25 hover:opacity-50" />
+            <Menu className="w-9 h-9 " />
           </button>
         )}
-        <div className="ml-8">
+        <div className="ml-6">
           <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
             My Knowledge Base
           </h1>
@@ -196,19 +197,19 @@ export default function NotesFeed({
                   : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               }`}
             >
-              {folders.map((numb, indx) => (
+              {folders.map((groupName, indx) => (
                 <div
                   key={indx}
-                  onClick={() => openFolder(numb)}
+                  onClick={() => openFolder(groupName)}
                   className="glass-panel hover:translate-0.5  rounded-2xl shadow-2xl p-5 flex  justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out"
                 >
-                  <h1>{numb}</h1>
+                  <h1 className="truncate">{groupName}</h1>
                   <button
                     title="ungroup"
                     className="border rounded-sm transition-all duration-500 ease-in-out bg-gray-600 hover:bg-violet-700 hover:border-violet-700 "
                     onClick={(e) => {
                       e.stopPropagation();
-                      unGroupNotes(numb);
+                      unGroupNotes(groupName);
                     }}
                   >
                     <UngroupIcon className="w-5 h-5 " />

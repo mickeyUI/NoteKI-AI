@@ -11,6 +11,7 @@ import Upload from "./components/Upload";
 import Folder from "./components/Folder";
 import { FastForward, Heading1 } from "lucide-react";
 import { Button } from "flowbite-react";
+import { toast, Toaster } from "sonner";
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -41,12 +42,12 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [citations, setCitations] = useState([]);
 
-  // History viewing state
+  // search and response
   const [activeHistoryItem, setActiveHistoryItem] = useState(null);
   const [userRes, setUserQuery] = useState([]);
   const [aiRes, setAiRes] = useState([]);
 
-  // General status indicators
+  // Status
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingChats, setLoadingChats] = useState(false);
   const [grouping, setGrouping] = useState(false);
@@ -61,6 +62,7 @@ export default function App() {
     if (token) {
       localStorage.setItem("token", token);
       loadDashboardData();
+      // toast.success("its loads 2 times. don't know why figure it out ");
     } else {
       localStorage.removeItem("token");
       setNotes([]);
@@ -102,23 +104,6 @@ export default function App() {
     }
   };
 
-  // Safe unpacked data getters to prevent React rendering crashes
-  const getSafeNotes = () => {
-    if (!notes) return [];
-    if (Array.isArray(notes)) {
-      return notes.filter((note) => note?.group === "none");
-    }
-    return [];
-  };
-
-  const getSafeChats = () => {
-    if (!chats) return [];
-    if (Array.isArray(chats)) return chats;
-    if (chats.chats && Array.isArray(chats.chats)) return chats.chats;
-    if (chats.data && Array.isArray(chats.data)) return chats.data;
-    return [];
-  };
-
   const setFolders = () => {
     if (!notes || !Array.isArray(notes)) {
       setFolder([]);
@@ -131,7 +116,6 @@ export default function App() {
         folderSet.add(note.group);
       }
     });
-    console.log("Folders found:", Array.from(folderSet));
     setFolder(Array.from(folderSet));
   };
 
@@ -151,13 +135,10 @@ export default function App() {
         });
   };
 
-  const safeNotes = getSafeNotes();
-  const safeChats = getSafeChats();
-
-  const pinnedNotes = safeNotes.filter(
+  const pinnedNotes = notes.filter(
     (n) => n && n.id && pinnedIds.includes(n.id),
   );
-  const standardNotes = safeNotes.filter(
+  const standardNotes = notes.filter(
     (n) => n && n.id && !pinnedIds.includes(n.id),
   );
 
@@ -170,47 +151,36 @@ export default function App() {
     setNoteCreationLoading(true);
     try {
       const newNote = await api.addNote(noteData);
-      if (!newNote) {
-        alert("Failed to create note. Please try again.");
-        return;
-      }
       if (newNote && newNote.id) {
-        setNotes((prev) => {
-          const currentList = getSafeNotes();
-          return [newNote, ...currentList];
-        });
+        setNotes((prev) => [newNote, ...notes]);
+        toast.success("Note Created");
       } else {
         await api.getNotes().then(setNotes);
       }
-      setIsNoteModalOpen(false);
     } catch (err) {
-      alert("Failed to create note: " + err.message);
+      toast.erorr("Try Again");
+      console.log("Failed to create note: " + err.message);
     } finally {
       setNoteCreationLoading(false);
+      setIsNoteModalOpen(false);
     }
   };
 
   const handleUploading = async (noteData) => {
     try {
-      if (!noteData.source_url) {
-        alert("image is required.");
-        return;
-      }
       const newUpload = await api.uploadImg(noteData);
-      console.log(newUpload);
       if (newUpload && newUpload.id) {
-        setNotes(() => {
-          const currentList = getSafeNotes();
-          return [newUpload, ...currentList];
-        });
+        setNotes(() => [newUpload, ...notes]);
+        toast.success("Upload Complete");
       } else {
         await api.getNotes().then(setNotes);
       }
-      setUploadOpen(false);
     } catch (err) {
-      alert("Failed to create note: " + err.message);
+      toast.error("Try Again");
+      console.log("Failed to create note: " + err.message);
     } finally {
       setUploading(false);
+      setUploadOpen(false);
     }
   };
 
@@ -224,31 +194,37 @@ export default function App() {
       } else {
         await api.getNotes().then(setNotes);
       }
-      setNoteViewOpen(false);
     } catch (err) {
-      alert("Failed to create note: " + err.message);
+      toast.error("Try Again");
+      console.log("Failed to create note: " + err.message);
     } finally {
       setViewLoading(false);
+      setNoteViewOpen(false);
     }
   };
 
   const handleDeleteNote = async (noteID) => {
-    const res = await api.deleteNote(noteID);
-    if (res) {
-      const newNote = notes.filter((note) => note.id != noteID);
-      setNotes(newNote);
-    } else {
-      alert("error");
+    try {
+      const res = await api.deleteNote(noteID);
+      if (res) {
+        const newNote = notes.filter((note) => note.id != noteID);
+        setNotes(newNote);
+        toast.success("Note Deleted");
+      }
+    } catch (err) {
+      toast.error("Try Again");
+      console.log("Error:", err.message);
     }
   };
 
   const handleDeleteChat = async (chatID) => {
-    const res = await api.deleteChat(chatID);
-    if (res) {
+    try {
+      const res = await api.deleteChat(chatID);
       const newChat = chats.filter((chat) => chat.id != chatID);
       setChats(newChat);
-    } else {
-      alert("error");
+    } catch (err) {
+      toast.error("Try Again");
+      console.log("ERROR: ", err.message);
     }
   };
 
@@ -282,6 +258,7 @@ export default function App() {
       });
 
       if (!response.ok) {
+        toast.error("Try Again");
         throw new Error(`AI Streaming failed: ${response.statusText}`);
       }
       const stringifiedCitation = response.headers.get("X-Citation");
@@ -326,6 +303,7 @@ export default function App() {
         setAiRes(fetchedAiRes || []);
         await api.getChats().then(setChats);
       } catch (logErr) {
+        toast.error("Try Again");
         console.error("Failed to log chat conversation:", logErr);
       }
     } catch (err) {
@@ -367,39 +345,36 @@ export default function App() {
   };
 
   const handleGrouping = async () => {
-    console.log("Grouping notes by group field...");
-    const res = await api.groupNotes();
-    if (res) {
-      try {
-        setGrouping(true);
-        const updatedNotes = await api.getNotes();
-        if (updatedNotes) {
-          setNotes(updatedNotes);
-        }
-      } catch (err) {
-        console.error("Failed to refresh notes after grouping:", err);
-      } finally {
-        setGrouping(false);
+    try {
+      setGrouping(true);
+      const res = await api.groupNotes();
+      const updatedNotes = await api.getNotes();
+      if (updatedNotes) {
+        setNotes(updatedNotes);
       }
-    } else {
-      alert("error, failed to group notes. Please try again.");
+    } catch (err) {
+      toast.error("Try Again Later");
+      console.error("Failed grouping:", err);
+    } finally {
+      setGrouping(false);
+      toast.success("Grouping Finished");
     }
   };
 
   const handleUngrouping = async (folder) => {
-    console.log("Ungrouping notes in folder:", folder);
-    const res = await api.ungroupNotes(folder);
-    if (res) {
-      try {
-        const updatedNotes = await api.getNotes();
-        if (updatedNotes) {
-          setNotes(updatedNotes);
-        }
-      } catch (err) {
-        console.error("Failed to refresh notes after ungrouping:", err);
+    try {
+      setGrouping(true);
+      const res = await api.ungroupNotes(folder);
+      const updatedNotes = await api.getNotes();
+      if (updatedNotes) {
+        setNotes(updatedNotes);
       }
-    } else {
-      alert("error, failed to ungroup notes. Please try again.");
+    } catch (err) {
+      toast.error("Try Again Later");
+      console.error("ungrouping faild:", err);
+    } finally {
+      setGrouping(false);
+      toast.success(`${folder} Ungrouped`);
     }
   };
 
@@ -410,11 +385,12 @@ export default function App() {
 
   return (
     <div className="flex  h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
+      <Toaster position="top-center" theme="dark" />
       {/* Sidebar - Left Panel */}
       {!pullSidebar && (
         <Sidebar
           pinnedNotes={pinnedNotes}
-          chats={safeChats}
+          chats={chats}
           loadingChats={loadingChats}
           activeHistoryItem={activeHistoryItem}
           onViewHistory={handleViewHistoryChat}
@@ -440,7 +416,7 @@ export default function App() {
           {/* Notes Feed Container */}
           <NotesFeed
             loadingNotes={loadingNotes}
-            notes={safeNotes}
+            notes={notes}
             folders={folder}
             pinnedNotes={pinnedNotes}
             standardNotes={standardNotes}

@@ -15,7 +15,7 @@ export default function ViewNote({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceUrl, setSourceUrl] = useState(null);
   const [creation, setCreated] = useState("");
   const [noteType, setNoteType] = useState("");
 

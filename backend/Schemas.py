@@ -59,6 +59,7 @@ class EditNote(BaseModel):
     tags: str
     source_url: str
 
+# this is to populate with data instead of manual entering each
 class noticas(BaseModel):
     title: Optional[str] = "New Note"
     content: str
