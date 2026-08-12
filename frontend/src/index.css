@@ -1,25 +1,23 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
-
+/* this is for the ai searchbar */
 @theme {
-  --color-slate-900: #0f172a;
-  --color-slate-950: #030712;
-  --color-indigo-400: #818cf8;
-  --color-purple-400: #c084fc;
-  --color-pink-400: #f472b6;
-  --color-cyan-400: #22d3ee;
+  --color-slate-900: #212121;
+  --color-slate-950: #212121;
+  --color-indigo-400: #fff;
+  --color-purple-400: #fff;
+  --color-pink-400: #fff;
+  --color-cyan-400: #fff;
 
-  --shadow-gemini-glow:
-    0 0 25px rgba(139, 92, 246, 0.25), 0 0 50px rgba(236, 72, 153, 0.1);
-  --shadow-gemini-glow-hover:
-    0 0 35px rgba(139, 92, 246, 0.4), 0 0 60px rgba(236, 72, 153, 0.2);
+  --shadow-gemini-glow: 0 0 2px #bfbfbf, 0 0 10px #bfbfbf;
+  --shadow-gemini-glow-hover: 0 0 35px #bfbfbf, 0 0 60px #bfbfbf;
 }
 
 /* Base custom font and styling */
 
 html,
 body {
-  background-color: #030712; /* Fallback deep slate / black */
+  background-color: #212121; /* Fallback deep slate / black */
   color: #f3f4f6;
   font-family: "Inter", sans-serif;
   margin: 0;
@@ -53,13 +51,11 @@ h6 {
 } */
 
 .glass-panel {
-  background: rgba(36, 36, 37, 0.073);
+  background: #01010151;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 2px 100px 0 rgba(255, 255, 255, 0.044),
-    0 5px 15px 0 rgba(20, 20, 20, 0.3);
+  box-shadow: 0 0 20px rgb(11, 11, 11);
 }
 
 .glass-panel-hover {
@@ -67,13 +63,14 @@ h6 {
 }
 
 .glass-panel-hover:hover {
-  background: rgba(15, 23, 42, 0.55);
-  border-color: rgba(168, 85, 247, 0.3);
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
+  background: #1a1a1a;
+  border-color: rgba(17, 16, 20, 0.3);
+  box-shadow: 0 0 20px rgb(11, 11, 11);
 }
 
 .glass-input {
-  background: rgba(1, 0, 4, 0.288);
+  color: white;
+  background: #1a1a1a;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   /* border: 1px solid rgba(255, 255, 255, 0.1); */
@@ -81,11 +78,43 @@ h6 {
 }
 
 .glass-input:focus {
-  background: rgba(3, 7, 18, 0.7);
-  border-color: rgba(168, 85, 247, 0.5);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+  /* background: rgba(3, 7, 18, 0.7); */
+  /* border-color: rgba(168, 85, 247, 0.5); */
+  /* box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); */
   outline: none;
 }
+
+.btn-style {
+  padding: 8px;
+  background-color: #212121;
+  /* border: 0px solid rgb(3, 104, 141); */
+  color: #bfbfbf;
+  border-radius: 8px;
+  transition: all 0.2 ease-in-out;
+}
+.btn-style:hover {
+  color: #f1f1f1;
+  background-color: #393939;
+  border: white;
+}
+
+.internal {
+  color: #bfbfbf;
+}
+.bg-1 {
+  background-color: #212121;
+  transition: all 0.2 ease-in-out;
+}
+.bg-2 {
+  background-color: #121212;
+}
+
+/* .internal:hover {
+  color: #e8e8e8;
+} */
+/* .bg-1:hover {
+  background-color: #525252;
+} */
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {

@@ -50,16 +50,16 @@ function AIAnswerPanel({
 
   return (
     <section
-      className={`fixed top-0 bottom-0 right-0 z-40 lg:z-20 w-full lg:w-[450px] border-l border-white/5 bg-slate-950/95 lg:bg-slate-950/50 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-transform duration-500 ease-in-out overflow-hidden transform ${
+      className={`fixed top-0 bottom-0 right-0 z-40 lg:z-20 w-full lg:w-[450px] border-l border-white/5 bg-1 lg:bg-slate-950/50 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-transform duration-1000 ease-in-out overflow-hidden transform ${
         isSearchActive ? "translate-x-0" : "translate-x-full"
       }`}
     >
       {/* Header info */}
       <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-950/60 flex-none">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">
-            AI Synthesis Core
+          <div className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+          <span className="text-xs font-bold uppercase tracking-wider internal">
+            Lore Synthesis
           </span>
         </div>
         <button
@@ -74,25 +74,25 @@ function AIAnswerPanel({
       {/* Response body scroll content */}
       <div className="flex-1 overflow-y-auto scroll-smooth p-6 space-y-6">
         {/* Question card */}
-        <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
-          <p className="text-[10px] uppercase font-bold text-slate-500 mb-1 tracking-wider">
+        {/* <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
+          <p className="text-[10px] uppercase font-bold internal mb-1 tracking-wider">
             Searched Query
           </p>
-          <p className="text-sm font-semibold text-slate-200">
+          <p className="text-sm font-semibold internal opacity-80">
             "{searchQuery}"
           </p>
-        </div>
+        </div> */}
 
         {/* Streaming Content */}
         <div className="space-y-3">
-          <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+          <p className="text-[10px] uppercase font-bold internal tracking-wider">
             Generated Response
           </p>
-          <div className="text-sm text-slate-300 leading-relaxed font-normal whitespace-pre-wrap">
+          <div className="text-sm internal leading-relaxed whitespace-pre-wrap flex flex-col gap-2 justify-center">
             {messages.map((m) => (
               <div
                 key={m.id}
-                className={`bg-gray-900 rounded-2xl w-fit p-2 mb-2 ${m.role == "user" ? "mr-5" : "ml-5"} `}
+                className={` rounded-2xl w-fit py-2 px-3  ${m.role == "user" ? "self-end max-w-80 bg-[#1a1a1a]" : ""} `}
               >
                 <p className="">{m.content}</p>
               </div>

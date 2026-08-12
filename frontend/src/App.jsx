@@ -384,8 +384,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex  h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
-      <Toaster position="top-center" theme="dark" />
+    <div className="flex  h-screen text-slate-100 overflow-hidden font-sans select-none">
+      <Toaster position="top-center" theme="light" />
       {/* Sidebar - Left Panel */}
       {!pullSidebar && (
         <Sidebar
@@ -451,16 +451,15 @@ export default function App() {
             setNoteViewOpen={setNoteViewOpen}
           />
         </div>
-
-        {/* AI Search/Chat Input (Bottom Fixed) */}
-        <ChatInput
-          inputVal={inputVal}
-          onChange={setInputVal}
-          isStreaming={isStreaming}
-          onSubmit={handleSearchSubmit}
-        />
       </main>
 
+      {/* AI Search/Chat Input (Bottom Fixed) */}
+      <ChatInput
+        inputVal={inputVal}
+        onChange={setInputVal}
+        isStreaming={isStreaming}
+        onSubmit={handleSearchSubmit}
+      />
       {/* Note Modal Dialog */}
       <CreateNoteModal
         isOpen={isNoteModalOpen}

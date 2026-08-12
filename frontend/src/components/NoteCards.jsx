@@ -40,14 +40,14 @@ export default function NoteCards({
             e.stopPropagation();
             onTogglePin(note.id);
           }}
-          className={` p-1.5 rounded-lg border transition-all duration-200 opacity-0 group-hover:opacity-100 cursor-pointer ${
+          className={` btn-style opacity-10 group-hover:opacity-100 ${
             isPinned
-              ? "bg-purple-500/20 border-purple-500/40 text-purple-300 opacity-100"
+              ? "bg-purple-500/20 border-purple-500/40 text-purple-100 opacity-100"
               : "bg-slate-900 border-white/5 text-slate-500 hover:text-slate-300"
           }`}
           title={isPinned ? "Unpin card" : "Pin card"}
         >
-          <Pin className="w-3.5 h-3.5" />
+          <Pin className="w-3.5 h-3.5" fill="currentcolor" />
         </button>
 
         <button
@@ -55,7 +55,7 @@ export default function NoteCards({
             e.stopPropagation();
             handleDeleteNote(note.id);
           }}
-          className=" p-1.5 rounded-lg bg-purple-950 border transition-all duration-200 opacity-0 group-hover:opacity-100  cursor-pointer"
+          className=" btn-style opacity-10 group-hover:opacity-100"
         >
           <Trash2Icon className="w-3.5 h-3.5 text-purple-200 hover:text-red-400" />
         </button>
@@ -63,12 +63,12 @@ export default function NoteCards({
       {/* Header details */}
       <div>
         <h3
-          className={`text-base font-bold text-white mb-2 pr-8 group-hover:text-purple-300 transition-colors ${note.note_type != "text" ? "pl-5" : null}`}
+          className={`text-base font-bold internal mb-2 pr-8 transition-colors ${note.note_type != "text" ? "pl-5" : null}`}
         >
           {note.title}
         </h3>
         {note.note_type === "text" ? (
-          <p className="text-xs text-slate-400 leading-relaxed line-clamp-2 mb-4">
+          <p className="text-xs internal leading-relaxed line-clamp-2 mb-4 opacity-80">
             {note.content}
           </p>
         ) : (
@@ -83,7 +83,8 @@ export default function NoteCards({
       </div>
 
       {/* Pill tags and calendar */}
-      <div>
+
+      <div className="flex flex-row items-center justify-between ">
         {(() => {
           const tagsArr = Array.isArray(note.tags)
             ? note.tags
@@ -95,7 +96,7 @@ export default function NoteCards({
               : [];
           if (tagsArr.length === 0) return null;
           return (
-            <div className="flex flex-wrap gap-1.5 mb-3.5">
+            <div className="flex flex-wrap gap-1.5 ">
               {tagsArr.map((tag, tagIdx) => (
                 <span
                   key={tagIdx}
@@ -103,7 +104,7 @@ export default function NoteCards({
                     e.stopPropagation();
                     onSelectTag(tag);
                   }}
-                  className={`text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full cursor-pointer hover:bg-purple-500/20 transition-all ${note.note_type != "text" ? "ml-5" : null}`}
+                  className={`text-[10px] font-bold btn-style cursor-pointer transition-all ${note.note_type != "text" ? "ml-5" : null}`}
                 >
                   {tag}
                 </span>
@@ -112,7 +113,7 @@ export default function NoteCards({
           );
         })()}
 
-        <div className="flex items-center justify-end gap-1.5 text-slate-500 text-[10px]">
+        <div className="flex items-center pt-4 justify-end gap-1.5 internal opacity-50 text-[10px]">
           <Calendar className="w-3.5 h-3.5" />
           <span>{formatDate(note.updated_at)}</span>
         </div>

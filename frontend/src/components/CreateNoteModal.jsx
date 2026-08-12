@@ -47,7 +47,7 @@ export default function CreateNoteModal({
       />
 
       {/* Modal Card */}
-      <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
@@ -57,12 +57,12 @@ export default function CreateNoteModal({
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400">
+          <div className="p-2 bg-1 rounded-xl text-purple-400">
             <Plus className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Create New Memory</h2>
-            <p className="text-xs text-slate-400 font-medium">
+            <h2 className="text-xl font-bold internal">Create New Memory</h2>
+            <p className="text-xs internal opacity-80 font-medium">
               Add a note or resource to your AI knowledge base
             </p>
           </div>
@@ -75,7 +75,7 @@ export default function CreateNoteModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
               placeholder="TITLE"
               required
             />
@@ -85,7 +85,7 @@ export default function CreateNoteModal({
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="glass-input w-full min-h-[120px] max-h-[240px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+              className="glass-input w-full h-[400px]  py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm resize-none"
               placeholder="Take a note, ideas, or insights..."
               required
             />
@@ -96,7 +96,7 @@ export default function CreateNoteModal({
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
               placeholder="Tags e.g. frontend, react, tips"
             />
           </div>
@@ -106,7 +106,7 @@ export default function CreateNoteModal({
               type="url"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
               placeholder="Source eg:https://example.com/docs"
             />
           </div>

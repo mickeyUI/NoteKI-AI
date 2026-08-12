@@ -7,6 +7,7 @@ import {
   AlignVerticalJustifyEndIcon,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { toast } from "sonner";
 
 export default function Upload({
   isOpen,
@@ -28,7 +29,7 @@ export default function Upload({
 
   const uploadImage = async () => {
     if (!content) {
-      alert("Please select a file to upload.");
+      toast.error("Image Not Found");
       return;
     }
 
@@ -53,7 +54,10 @@ export default function Upload({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!title || !content) return;
+    if (!title || !content) {
+      toast.error("");
+      return;
+    }
     setLoading(true);
     const publicURL = await uploadImage();
 
@@ -94,19 +98,19 @@ export default function Upload({
       <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 internal hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400">
+          <div className="p-2 bg-1 rounded-xl text-purple-400">
             <Plus className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Upload Image</h2>
-            <p className="text-xs text-slate-400 font-medium">
+            <h2 className="text-xl font-bold internal">Upload Image</h2>
+            <p className="text-xs internal font-medium opacity-80">
               Add your image or note to your AI knowledge base
             </p>
           </div>
@@ -118,7 +122,7 @@ export default function Upload({
             <input
               type="file"
               onChange={handleFileChange}
-              className="glass-input border-1 border-b w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+              className="glass-input border-1 border-b w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
             />
           </div>
           <div className="space-y-2">
@@ -126,7 +130,7 @@ export default function Upload({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
               placeholder="TITLE"
               required
             />
@@ -137,7 +141,7 @@ export default function Upload({
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm"
+              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
               placeholder="Tags e.g. frontend, react, tips"
             />
           </div>
@@ -156,7 +160,7 @@ export default function Upload({
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.2)] cursor-pointer flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 bg-[#717171] hover:bg-[#4d4d4d] text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.2)] cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -164,10 +168,7 @@ export default function Upload({
                   <span>Saving...</span>
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Save Memory</span>
-                </>
+                <span>Save Memory</span>
               )}
             </button>
           </div>

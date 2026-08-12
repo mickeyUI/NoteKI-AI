@@ -17,6 +17,7 @@ import NoteCards from "./NoteCards";
 import SearchDisplayPopup from "./SearchDisplayPopup";
 import { AnimatePresence, motion } from "framer-motion";
 import { api } from "../services/api";
+import { toast } from "sonner";
 
 export default function NotesFeed({
   loadingNotes = false,
@@ -67,6 +68,7 @@ export default function NotesFeed({
       const pgResults = await api.pgSearch(search);
       setPgSearchedNotes(pgResults);
     } catch (error) {
+      toast.error("Try Again");
       console.log("Faild PgSearching:", error.message);
     } finally {
       setPging(false);
@@ -80,27 +82,29 @@ export default function NotesFeed({
   };
   return (
     <section
-      className={`h-full overflow-y-auto px-6 md:px-8 py-8 transition-all duration-500 ease-in-out flex flex-col ${
+      className={`h-full bg-[#1a1a1a] overflow-y-auto px-6 md:px-8 py-8 transition-all duration-1000 ease-in-out flex flex-col ${
         isSearchActive ? "w-full lg:w-[calc(100%-450px)]" : "w-full"
       }`}
     >
       {/* Upper title menu */}
       <div className="flex items-center justify-between mb-8">
-        {isShowing && (
-          <button
-            onClick={() => setPullSidebar(false)}
-            className="absolute -left-6 hover:left-1 p-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 rounded-lg transition-all duration-200 cursor-pointe"
-          >
-            <Menu className="w-9 h-9 " />
-          </button>
-        )}
-        <div className="ml-6">
-          <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
-            My Knowledge Base
-          </h1>
-          <p className="text-xs text-slate-400 font-medium">
-            Browse, create, and search your personal AI-augmented memory cards
-          </p>
+        <div className="flex gap-2">
+          {isShowing && (
+            <button
+              onClick={() => setPullSidebar(false)}
+              className=" flex justify-center items-center btn-style cursor-pointer"
+            >
+              <Menu className="w-6 h-6 " />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight internal mb-1">
+              Lore Knowledge Base
+            </h1>
+            <p className="text-xs internal font-medium">
+              Browse, create, and search your personal AI-augmented memory cards
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <div className="flex relative">
@@ -108,7 +112,7 @@ export default function NotesFeed({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               type="text"
-              className="w-full bg-purple-950 rounded-2xl p-1 pr-8 text-[15px] hover:border-2 hover:border-purple-700 border-1 border-purple-800"
+              className="w-full focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10"
             />
             {search && (
               <button
@@ -120,26 +124,23 @@ export default function NotesFeed({
             )}
           </div>
 
-          <button
-            onClick={runPgSearch}
-            className="border-0 p-2 rounded-2xl bg-gray-900 hover:bg-purple-950"
-          >
+          <button onClick={runPgSearch} className="btn-style ">
             <SearchIcon className="w-4 h-4 " />
           </button>
           <button
             onClick={() => {
               openUpload(true);
             }}
-            className="bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-purple-500 py-1 px-2 rounded-2xl"
+            className="btn-style"
           >
             <UploadIcon />
           </button>
           <button
             onClick={onOpenCreateNoteModal}
-            className="py-2.5 px-4 bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.2)] text-xs flex items-center gap-2 cursor-pointer"
+            className="btn-style flex justify-center items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>New Note</span>
+            <span>Create</span>
           </button>
         </div>
       </div>
@@ -190,37 +191,41 @@ export default function NotesFeed({
           {/* folder setup */}
 
           {folders.length > 0 && (
-            <div
-              className={`grid mb-24 gap-6 transition-all duration-500 ease-in-out ${
-                isSearchActive
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              }`}
-            >
-              {folders.map((groupName, indx) => (
-                <div
-                  key={indx}
-                  onClick={() => openFolder(groupName)}
-                  className="glass-panel hover:translate-0.5  rounded-2xl shadow-2xl p-5 flex  justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out"
-                >
-                  <h1 className="truncate">{groupName}</h1>
-                  <button
-                    title="ungroup"
-                    className="border rounded-sm transition-all duration-500 ease-in-out bg-gray-600 hover:bg-violet-700 hover:border-violet-700 "
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      unGroupNotes(groupName);
-                    }}
+            <div className="flex flex-col gap-4 mb-10">
+              <h1 className="internal text-2xl pl-2">Collections</h1>
+              <div
+                className={`grid gap-6 transition-all duration-500 ease-in-out ${
+                  isSearchActive
+                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                }`}
+              >
+                {folders.map((groupName, indx) => (
+                  <div
+                    key={indx}
+                    onClick={() => openFolder(groupName)}
+                    className="glass-panel hover:translate-0.5  rounded-2xl shadow-2xl p-5 flex  justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out"
                   >
-                    <UngroupIcon className="w-5 h-5 " />
-                  </button>
-                </div>
-              ))}
+                    <h1 className="truncate">{groupName}</h1>
+                    <button
+                      title="ungroup"
+                      className="btn-style "
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        unGroupNotes(groupName);
+                      }}
+                    >
+                      <UngroupIcon className="w-5 h-5 " />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {/*  Notes grid / masonry layout */}
-          <div>
+          <div className="gap-6 flex flex-col">
+            <h1 className="internal text-2xl pl-2">Notes</h1>
             <motion.div
               layout
               className={`grid mb-24 gap-6 transition-all duration-500 ease-in-out ${
