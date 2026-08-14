@@ -7,5 +7,5 @@ python-dotenv
 PyJWT
 requests
 supabase
-gorq
+groq
 google-genai
