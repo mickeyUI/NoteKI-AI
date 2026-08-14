@@ -1,15 +1,21 @@
+import { supabase } from "../supabaseClient"; // adjust path if needed
+
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export async function apiRequest(endpoint, options = {}) {
-  const token = localStorage.getItem("token");
+  // Get the current Supabase session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const headers = {
     "Content-Type": "application/json",
     ...options.headers,
   };
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  // Send Supabase's access token to FastAPI
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
   }
 
   const config = {
@@ -20,12 +26,13 @@ export async function apiRequest(endpoint, options = {}) {
   const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
   if (response.status === 401) {
-    localStorage.removeItem("token");
+    await supabase.auth.signOut();
     window.dispatchEvent(new Event("auth-failed"));
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+
     throw new Error(
       errorData.message ||
         errorData.detail ||
@@ -38,18 +45,6 @@ export async function apiRequest(endpoint, options = {}) {
 
 export const api = {
   baseUrl: BASE_URL,
-
-  register: (email, password) =>
-    apiRequest("/Register", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
-
-  login: (email, password) =>
-    apiRequest("/Login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
 
   getNotes: () =>
     apiRequest("/GetNotes", {
@@ -66,6 +61,7 @@ export const api = {
         source_url: note.source_url || "",
       }),
     }),
+
   uploadImg: (note) =>
     apiRequest("/UploadImg", {
       method: "POST",
@@ -76,11 +72,13 @@ export const api = {
         source_url: note.source_url || "",
       }),
     }),
+
   deleteNote: (noteid) =>
     apiRequest("/DelNote", {
       method: "DELETE",
       body: JSON.stringify({ id: noteid }),
     }),
+
   editNote: (note) =>
     apiRequest("/UpdateNote", {
       method: "PUT",
@@ -92,10 +90,12 @@ export const api = {
         source_url: note.sourceUrl || "",
       }),
     }),
+
   getChats: () =>
     apiRequest("/Chats", {
       method: "GET",
     }),
+
   getMessages: (convoID) =>
     apiRequest("/Messages", {
       method: "POST",
@@ -106,10 +106,11 @@ export const api = {
     apiRequest("/AddChat", {
       method: "POST",
       body: JSON.stringify({
-        title: title,
+        title,
         name: title,
       }),
     }),
+
   deleteChat: (chatid) =>
     apiRequest("/DelChat", {
       method: "DELETE",
@@ -122,7 +123,7 @@ export const api = {
       body: JSON.stringify({
         conversation_id: chatId,
         content: question,
-        role: role,
+        role,
       }),
     }),
 
@@ -130,6 +131,7 @@ export const api = {
     apiRequest("/Group", {
       method: "PUT",
     }),
+
   ungroupNotes: (folder) =>
     apiRequest("/UnGroup", {
       method: "PUT",
@@ -137,6 +139,7 @@ export const api = {
         group: folder,
       }),
     }),
+
   pgSearch: (Question) =>
     apiRequest("/search", {
       method: "POST",

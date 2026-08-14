@@ -1,0 +1,1 @@
+pip install fastapi uvicorn sqlalchemy psycopg2-binary==2.9.12 pgvector==0.3.6 python-dotenv pyjwt requests supabase --break-system-packages jwtpython-jose

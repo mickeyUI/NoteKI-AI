@@ -12,9 +12,11 @@ import Folder from "./components/Folder";
 import { FastForward, Heading1 } from "lucide-react";
 import { Button } from "flowbite-react";
 import { toast, Toaster } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "./supabaseClient";
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [session, setSession] = useState(null);
   const [notes, setNotes] = useState([]);
   const [chats, setChats] = useState([]);
   const [folder, setFolder] = useState([]);
@@ -53,22 +55,36 @@ export default function App() {
   const [grouping, setGrouping] = useState(false);
   const [pullSidebar, setPullSidebar] = useState(false);
 
-  if (!token) {
-    return <AuthPage onAuthSuccess={setToken} />;
-  }
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      setSession(session);
+    };
+
+    initializeAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Sync token to localStorage and load data
   useEffect(() => {
-    if (token) {
-      localStorage.setItem("token", token);
+    if (session) {
       loadDashboardData();
       // toast.success("its loads 2 times. don't know why figure it out ");
     } else {
-      localStorage.removeItem("token");
       setNotes([]);
       setChats([]);
     }
-  }, [token]);
+  }, [session]);
 
   // Auth failure listener (to handle 401 redirects from the fetch API client)
   useEffect(() => {
@@ -142,9 +158,13 @@ export default function App() {
     (n) => n && n.id && !pinnedIds.includes(n.id),
   );
 
-  const handleLogout = () => {
-    setToken(null);
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    console.log("clicked");
+    setSession(null);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("couldn't logout:   ", error);
+    }
   };
 
   const handleCreateNote = async (noteData) => {
@@ -382,28 +402,41 @@ export default function App() {
     setFolderOpen(true);
     setGroup(group);
   };
+  if (!session) {
+    return <AuthPage />;
+  }
 
   return (
     <div className="flex  h-screen text-slate-100 overflow-hidden font-sans select-none">
       <Toaster position="top-center" theme="light" />
       {/* Sidebar - Left Panel */}
-      {!pullSidebar && (
-        <Sidebar
-          pinnedNotes={pinnedNotes}
-          chats={chats}
-          loadingChats={loadingChats}
-          activeHistoryItem={activeHistoryItem}
-          onViewHistory={handleViewHistoryChat}
-          onSelectShortcut={(title) => setInputVal(title)}
-          onTogglePin={togglePin}
-          onLogout={handleLogout}
-          onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
-          toggleDelete={handleDeleteChat}
-          handleGrouping={handleGrouping}
-          Grouping={grouping}
-          pullButton={setPullSidebar}
-        />
-      )}
+      <AnimatePresence>
+        {!pullSidebar && (
+          <motion.div
+            layout
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Sidebar
+              pinnedNotes={pinnedNotes}
+              chats={chats}
+              loadingChats={loadingChats}
+              activeHistoryItem={activeHistoryItem}
+              onViewHistory={handleViewHistoryChat}
+              onSelectShortcut={(title) => setInputVal(title)}
+              onTogglePin={togglePin}
+              onLogout={handleLogout}
+              onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+              toggleDelete={handleDeleteChat}
+              handleGrouping={handleGrouping}
+              Grouping={grouping}
+              pullButton={setPullSidebar}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-screen relative overflow-hidden bg-[#030712]">
@@ -414,27 +447,29 @@ export default function App() {
         {/* Split Panel Flex Core */}
         <div className="flex-1 flex h-[calc(100vh-80px)] overflow-hidden relative z-10">
           {/* Notes Feed Container */}
-          <NotesFeed
-            loadingNotes={loadingNotes}
-            notes={notes}
-            folders={folder}
-            pinnedNotes={pinnedNotes}
-            standardNotes={standardNotes}
-            pinnedIds={pinnedIds}
-            onTogglePin={togglePin}
-            onSelectTag={(tag) => setInputVal(`#${tag}`)}
-            onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
-            isSearchActive={isSearchActive}
-            formatDate={formatDate}
-            handleDeleteNote={handleDeleteNote}
-            setNoteViewId={setNoteViewId}
-            setNoteViewOpen={setNoteViewOpen}
-            openUpload={setUploadOpen}
-            openFolder={openFolder}
-            unGroupNotes={handleUngrouping}
-            isShowing={pullSidebar}
-            setPullSidebar={setPullSidebar}
-          />
+          <AnimatePresence>
+            <NotesFeed
+              loadingNotes={loadingNotes}
+              notes={notes}
+              folders={folder}
+              pinnedNotes={pinnedNotes}
+              standardNotes={standardNotes}
+              pinnedIds={pinnedIds}
+              onTogglePin={togglePin}
+              onSelectTag={(tag) => setInputVal(`#${tag}`)}
+              onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+              isSearchActive={isSearchActive}
+              formatDate={formatDate}
+              handleDeleteNote={handleDeleteNote}
+              setNoteViewId={setNoteViewId}
+              setNoteViewOpen={setNoteViewOpen}
+              openUpload={setUploadOpen}
+              openFolder={openFolder}
+              unGroupNotes={handleUngrouping}
+              isShowing={pullSidebar}
+              setPullSidebar={setPullSidebar}
+            />
+          </AnimatePresence>
 
           {/* AI Answer Panel - Slide out layout */}
           <AIAnswerPanel

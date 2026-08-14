@@ -4,12 +4,18 @@ from sqlalchemy import Column, Integer, ForeignKey, String, Date, DateTime
 from pgvector.sqlalchemy import Vector
 import uuid
 from datetime import datetime
-
+class AuthUser(Base):
+    __tablename__ = "users"
+    __table_args__ = {"schema": "auth"}
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    
 class User(Base):
     __tablename__ = "users"
-    id = Column(UUID(as_uuid = True), primary_key=True, default = uuid.uuid4)
-    email = Column(String, nullable=False, unique=True)
-    password = Column(String, nullable=False)
+    id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
 
 class Note(Base):
     __tablename__ = "notes"

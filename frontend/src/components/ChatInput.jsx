@@ -30,7 +30,7 @@ export default function ChatInput({
             <button
               type="submit"
               disabled={!inputVal.trim() || isStreaming}
-              className="p-2 bg-1 rounded-full transition-all duration-300 disabled:opacity-20 cursor-pointer shadow-md disabled:cursor-not-allowed shrink-0"
+              className="p-2 justify-center items-center bg-[#212121] hover:bg-[#303030] rounded-full transition-all duration-300 disabled:opacity-20 cursor-pointer shadow-md disabled:cursor-not-allowed shrink-0"
             >
               <Send className="w-4 h-4 " />
             </button>

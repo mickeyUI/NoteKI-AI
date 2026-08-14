@@ -30,7 +30,7 @@ export default function Sidebar({
   pullButton,
 }) {
   return (
-    <aside className="w-64 border-r border-white/5 bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
+    <aside className="transition-all duration-500 ease-in-out w-64 border-r border-white/5 bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
       {/* Top brand portion */}
       <div className="p-5 border-b border-white/5 flex items-center justify-between">
         <span className="font-extrabold text-lg  internal bg-clip-text text-transparent">
@@ -50,7 +50,7 @@ export default function Sidebar({
           </button>
           <button
             onClick={() => pullButton(true)}
-            className="btn-style cursor-pointer"
+            className="transition-all duration-500 ease-in-out btn-style cursor-pointer"
             title="Collapse Sidebar"
           >
             <ArrowLeftIcon className="w-4 h-4" />
@@ -62,7 +62,7 @@ export default function Sidebar({
       <div className="px-4 py-3 flex-none">
         <div className="flex items-center gap-2 mb-2 px-1 text-slate-400">
           <Pin className="w-3.5 h-3.5 internal shrink-0" fill="currentcolor" />
-          <span className="text-xs font-bold uppercase tracking-wider interal">
+          <span className="text-xs font-bold uppercase tracking-wider internal">
             Pinned Hubs
           </span>
         </div>
@@ -77,7 +77,7 @@ export default function Sidebar({
               <div
                 key={note.id}
                 onClick={() => onSelectShortcut(note.title)}
-                className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium bg-1 border-l-2 border-[#cecece] transition-all duration-200 cursor-pointer"
+                className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#212121] hover:bg-[#302c2c] border-l-2 border-[#cecece] transition-all duration-200 cursor-pointer"
               >
                 <span className="truncate pr-2 internal">{note.title}</span>
                 <Pin
@@ -98,7 +98,7 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto px-4 py-2 border-t border-white/5">
         <div className="flex items-center gap-2 mb-3 px-1 text-slate-400">
           <History className="w-5 h-5 internal shrink-0" />
-          <span className="text-xs font-bold uppercase tracking-wider">
+          <span className="text-xs font-bold uppercase internal tracking-wider">
             History
           </span>
         </div>

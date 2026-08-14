@@ -50,7 +50,7 @@ function AIAnswerPanel({
 
   return (
     <section
-      className={`fixed top-0 bottom-0 right-0 z-40 lg:z-20 w-full lg:w-[450px] border-l border-white/5 bg-1 lg:bg-slate-950/50 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-transform duration-1000 ease-in-out overflow-hidden transform ${
+      className={`fixed bg-black top-0 bottom-0 right-0 z-40 lg:z-20 w-full lg:w-[450px] border-l border-white/5 bg-1 lg:bg-slate-950/50 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-transform duration-1000 ease-in-out overflow-hidden transform ${
         isSearchActive ? "translate-x-0" : "translate-x-full"
       }`}
     >

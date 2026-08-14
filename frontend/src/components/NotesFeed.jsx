@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  Plus,
+  SquarePen,
   RefreshCw,
   FileText,
   Pin,
@@ -81,7 +81,8 @@ export default function NotesFeed({
     setSearchDisplayActive(false);
   };
   return (
-    <section
+    <motion.div
+      layout
       className={`h-full bg-[#1a1a1a] overflow-y-auto px-6 md:px-8 py-8 transition-all duration-1000 ease-in-out flex flex-col ${
         isSearchActive ? "w-full lg:w-[calc(100%-450px)]" : "w-full"
       }`}
@@ -132,15 +133,16 @@ export default function NotesFeed({
               openUpload(true);
             }}
             className="btn-style"
+            title="Upload Image"
           >
             <UploadIcon />
           </button>
           <button
             onClick={onOpenCreateNoteModal}
-            className="btn-style flex justify-center items-center gap-2 cursor-pointer"
+            className="btn-style cursor-pointer"
+            title="Create note"
           >
-            <Plus className="w-4 h-4" />
-            <span>Create</span>
+            <SquarePen className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -271,6 +273,6 @@ export default function NotesFeed({
           </div>
         </>
       )}
-    </section>
+    </motion.div>
   );
 }

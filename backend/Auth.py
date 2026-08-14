@@ -1,37 +1,41 @@
 import os
 from dotenv import load_dotenv
-from jose import jwt, JWTError
-from datetime import datetime, timedelta
-from passlib.context import CryptContext
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+from supabase import create_client
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 load_dotenv()
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
-SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-if ALGORITHM is None:
-    raise ValueError("ALGORITHM environment variable not set")
+SUPABASE_URL = "https://gotothwfryivmhybasez.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvdG90aHdmcnlpdm1oeWJhc2V6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTk4MDQsImV4cCI6MjA5NjUzNTgwNH0.2DUc-28j7tX08Vi41MeVmfxu9Fc8n3w5Vl7YBNVM1h0"
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+supabase = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
 
 
-def verify_token(token: str):
+security = HTTPBearer()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
-    
+        response = supabase.auth.get_user(token)
 
-#returns a hashed password
-def hash_password(password):
-    return pwd_context.hash(password)
+        if response.user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication token"
+            )
 
-#returns a boolean
-def verify_password(password, hashed):
-    return pwd_context.verify(password, hashed)
+        return response.user.id
+
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication token"
+        )

@@ -73,7 +73,7 @@ export default function ViewNote({
       />
 
       {/* Modal Card */}
-      <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
         <button
           onClick={() => setView(false)}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
@@ -83,7 +83,7 @@ export default function ViewNote({
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400">
+          <div className="p-2 bg-1  rounded-xl text-purple-400">
             <Edit className="w-5 h-5 animate-pulse" />
           </div>
           <div>
@@ -109,7 +109,7 @@ export default function ViewNote({
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="glass-input w-full min-h-[120px] max-h-[240px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+                className="glass-input w-full h-[400px]  py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
                 placeholder="Write the core details, ideas, or insights..."
                 required
               />
@@ -159,7 +159,7 @@ export default function ViewNote({
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.2)] cursor-pointer flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 bg-[#717171] hover:bg-[#4d4d4d] text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.2)] cursor-pointer flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

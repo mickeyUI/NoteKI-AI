@@ -1,57 +1,84 @@
-import React, { useState } from 'react';
-import { api } from '../services/api';
-import ParticleBackground from './ParticleBackground';
-import { Mail, Lock, ShieldAlert, Sparkles, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import { api } from "../services/api";
+import ParticleBackground from "./ParticleBackground";
+import { Mail, Lock, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
+import { supabase } from "../supabaseClient";
+import App from "../App";
 
-export default function AuthPage({ onAuthSuccess }) {
+export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       if (isLogin) {
         // Sign In Flow
-        const data = await api.login(email, password);
-        const tokenVal = data?.token || data?.access_token;
-        if (tokenVal) {
-          localStorage.setItem('token', tokenVal);
-          onAuthSuccess(tokenVal);
-        } else {
-          throw new Error('Authentication token not received.');
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          console.error("LOGIN ERROR:", error);
+          return;
         }
+        return <App />;
+
+        console.log("LOGIN SUCCESS:", data);
       } else {
         // Sign Up Flow
-        await api.register(email, password);
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) {
+          console.error("SIGNUP ERROR:", error);
+          return;
+        }
+
+        console.log("SIGNUP SUCCESS:", data);
+        return <App />;
+
+        if (data.session) {
+          // User is already logged in
+          console.log("Logged in:", data.session);
+        } else {
+          // Email confirmation is required
+          console.log("Check your email");
+        }
         // Automatically attempt login upon successful registration
         try {
-          const data = await api.login(email, password);
-          const tokenVal = data?.token || data?.access_token;
-          if (tokenVal) {
-            localStorage.setItem('token', tokenVal);
-            onAuthSuccess(tokenVal);
-          } else {
-            setIsLogin(true);
-            setError('Account created! Please sign in with your credentials.');
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (error) {
+            console.error("LOGIN ERROR:", error);
+            return;
           }
-        } catch (loginErr) {
+
+          console.log("LOGIN SUCCESS:", data);
+        } catch (error) {
+          console.log("catch", error.message);
           setIsLogin(true);
-          setError('Account registered successfully! Please sign in.');
         }
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'An error occurred during authentication.');
+      setError(err.message || "An error occurred during authentication.");
     } finally {
       setLoading(false);
     }
@@ -140,10 +167,10 @@ export default function AuthPage({ onAuthSuccess }) {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>{isLogin ? 'Signing In...' : 'Registering...'}</span>
+                  <span>{isLogin ? "Signing In..." : "Registering..."}</span>
                 </>
               ) : (
-                <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
+                <span>{isLogin ? "Sign In" : "Create Account"}</span>
               )}
             </button>
 
@@ -151,12 +178,12 @@ export default function AuthPage({ onAuthSuccess }) {
             <div className="text-center text-sm text-slate-400 pt-2">
               {isLogin ? (
                 <p>
-                  Don't have an account?{' '}
+                  Don't have an account?{" "}
                   <button
                     type="button"
                     onClick={() => {
                       setIsLogin(false);
-                      setError('');
+                      setError("");
                     }}
                     className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors duration-200 underline underline-offset-4 cursor-pointer"
                   >
@@ -165,12 +192,12 @@ export default function AuthPage({ onAuthSuccess }) {
                 </p>
               ) : (
                 <p>
-                  Already have an account?{' '}
+                  Already have an account?{" "}
                   <button
                     type="button"
                     onClick={() => {
                       setIsLogin(true);
-                      setError('');
+                      setError("");
                     }}
                     className="text-purple-400 hover:text-purple-300 font-semibold transition-colors duration-200 underline underline-offset-4 cursor-pointer"
                   >

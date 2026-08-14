@@ -1,3 +1,0 @@
-pip install pgvector sqlalchemy alembic psycopg2-binary pyjwt python-dotenv fastapi uvicorn pip python-jose[cryptography] passlib[bcrypt]==1.7.4 bcrypt==4.0.1 requests 
-
-npm install -D tailwindcss @tailwindcss/vite sonner
