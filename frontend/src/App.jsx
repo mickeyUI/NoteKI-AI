@@ -106,7 +106,7 @@ export default function App() {
           return [];
         }),
         api.getChats().catch((err) => {
-          console.error("Chats load error", err);
+          console.error("Chats load error", err.message);
           return [];
         }),
       ]);
@@ -178,7 +178,7 @@ export default function App() {
         await api.getNotes().then(setNotes);
       }
     } catch (err) {
-      toast.erorr("Try Again");
+      toast.error("Try Again");
       console.log("Failed to create note: " + err.message);
     } finally {
       setNoteCreationLoading(false);
