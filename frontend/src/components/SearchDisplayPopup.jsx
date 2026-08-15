@@ -24,7 +24,7 @@ export default function SearchDisplayPopup({
       // onClick={() => setView(false)}
       />
       {/* Modal Card */}
-      <div className="absolute z-10 w-auto  h-full bg-gray-950 rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 overflow-y-auto">
+      <div className="absolute z-10 w-auto  h-full bg-1 rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 overflow-y-auto">
         {/* Header */}
         {loading ? (
           <main className="w-292 h-full pl-20 pt-20">
