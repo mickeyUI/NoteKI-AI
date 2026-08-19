@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "./services/api";
 import AuthPage from "./components/AuthPage";
 import CreateNoteModal from "./components/CreateNoteModal";
@@ -14,6 +14,7 @@ import { Button } from "flowbite-react";
 import { toast, Toaster } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./supabaseClient";
+import CreateCollection from "./components/CreateCollection";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -21,6 +22,7 @@ export default function App() {
   const [chats, setChats] = useState([]);
   const [folder, setFolder] = useState([]);
   const [group, setGroup] = useState("");
+  const [ungrouped, setUngrouped] = useState([]);
 
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -31,6 +33,7 @@ export default function App() {
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [isFolderOpen, setFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
   const [pinnedIds, setPinnedIds] = useState(() => {
     const saved = localStorage.getItem("pinned_notes");
     return saved ? JSON.parse(saved) : [];
@@ -89,7 +92,7 @@ export default function App() {
   // Auth failure listener (to handle 401 redirects from the fetch API client)
   useEffect(() => {
     const handleAuthFailed = () => {
-      setToken(null);
+      setSession(null);
     };
     window.addEventListener("auth-failed", handleAuthFailed);
     return () => window.removeEventListener("auth-failed", handleAuthFailed);
@@ -112,6 +115,8 @@ export default function App() {
       ]);
       setNotes(fetchedNotes || []);
       setChats(fetchedChats || []);
+      const ungroup = fetchedNotes.filter((note) => note.group == "none");
+      setUngrouped(ungroup);
     } catch (err) {
       console.error("Error loading dashboard data:", err);
     } finally {
@@ -151,10 +156,10 @@ export default function App() {
         });
   };
 
-  const pinnedNotes = notes.filter(
+  const pinnedNotes = ungrouped.filter(
     (n) => n && n.id && pinnedIds.includes(n.id),
   );
-  const standardNotes = notes.filter(
+  const standardNotes = ungrouped.filter(
     (n) => n && n.id && !pinnedIds.includes(n.id),
   );
 
@@ -172,11 +177,11 @@ export default function App() {
     try {
       const newNote = await api.addNote(noteData);
       if (newNote && newNote.id) {
-        setNotes((prev) => [newNote, ...notes]);
-        toast.success("Note Created");
+        setNotes((prev) => [newNote, ...prev]);
       } else {
         await api.getNotes().then(setNotes);
       }
+      toast.success("Note Created");
     } catch (err) {
       toast.error("Try Again");
       console.log("Failed to create note: " + err.message);
@@ -191,10 +196,10 @@ export default function App() {
       const newUpload = await api.uploadImg(noteData);
       if (newUpload && newUpload.id) {
         setNotes(() => [newUpload, ...notes]);
-        toast.success("Upload Complete");
       } else {
         await api.getNotes().then(setNotes);
       }
+      toast.success("Upload Complete");
     } catch (err) {
       toast.error("Try Again");
       console.log("Failed to create note: " + err.message);
@@ -214,6 +219,7 @@ export default function App() {
       } else {
         await api.getNotes().then(setNotes);
       }
+      toast.success("Edit Complete");
     } catch (err) {
       toast.error("Try Again");
       console.log("Failed to create note: " + err.message);
@@ -398,6 +404,20 @@ export default function App() {
     }
   };
 
+  const CreateNewCollection = async (notes, collectionName) => {
+    try {
+      const res = await api.customGroup(notes, collectionName);
+      const updatedNotes = await api.getNotes();
+      if (updatedNotes) {
+        setNotes(updatedNotes);
+        toast.success(`${collectionName} Created`);
+      }
+    } catch (err) {
+      toast.error("Try Again Later");
+      console.error("custom grouping faild:", err);
+    }
+  };
+
   const openFolder = (group) => {
     setFolderOpen(true);
     setGroup(group);
@@ -466,8 +486,10 @@ export default function App() {
               openUpload={setUploadOpen}
               openFolder={openFolder}
               unGroupNotes={handleUngrouping}
+              grouping={grouping}
               isShowing={pullSidebar}
               setPullSidebar={setPullSidebar}
+              setCreateModel={setCreateGroupModalOpen}
             />
           </AnimatePresence>
 
@@ -501,6 +523,7 @@ export default function App() {
         onClose={() => setIsNoteModalOpen(false)}
         onSubmit={handleCreateNote}
         loading={noteCreationLoading}
+        folders={folder}
       />
       <ViewNote
         isOpen={isNoteViewOpen}
@@ -510,6 +533,7 @@ export default function App() {
         setid={setNoteViewId}
         notes={notes}
         onSubmit={handleEditNote}
+        folders={folder}
       />
       <Upload
         isOpen={isUploadOpen}
@@ -517,6 +541,7 @@ export default function App() {
         onSubmit={handleUploading}
         loading={uploading}
         setLoading={setUploading}
+        folders={folder}
       />
       <Folder
         isOpen={isFolderOpen}
@@ -531,6 +556,16 @@ export default function App() {
         onSelectTag={(tag) => setInputVal(`#${tag}`)}
         setNoteViewId={setNoteViewId}
         setNoteViewOpen={setNoteViewOpen}
+      />
+      <CreateCollection
+        isOpen={createGroupModalOpen}
+        onClose={() => setCreateGroupModalOpen(false)}
+        onSubmit={CreateNewCollection}
+        loading={uploading}
+        setLoading={setUploading}
+        ungrouped={ungrouped}
+        setUngrouped={setUngrouped}
+        folders={folder}
       />
     </div>
   );

@@ -1,16 +1,19 @@
 import React, { useState } from "react";
 import { X, Plus, Sparkles, Loader2 } from "lucide-react";
+import ComboBox from "./ComboBox";
 
 export default function CreateNoteModal({
   isOpen,
   onClose,
   onSubmit,
   loading,
+  folders,
 }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [collection, setCollection] = useState("none");
 
   if (!isOpen) return null;
 
@@ -29,6 +32,7 @@ export default function CreateNoteModal({
       content,
       tags: tagArray.toString(),
       source_url: sourceUrl,
+      group: collection,
     });
 
     // Reset values
@@ -36,6 +40,7 @@ export default function CreateNoteModal({
     setContent("");
     setTags("");
     setSourceUrl("");
+    setCollection("none");
   };
 
   return (
@@ -47,7 +52,7 @@ export default function CreateNoteModal({
       />
 
       {/* Modal Card */}
-      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-screen overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
@@ -90,6 +95,12 @@ export default function CreateNoteModal({
               required
             />
           </div>
+
+          <ComboBox
+            folders={folders}
+            folder={collection}
+            setFolder={setCollection}
+          />
 
           <div className="space-y-2">
             <input

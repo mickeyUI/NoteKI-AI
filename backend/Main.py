@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, ReciveGroup, EditNote, lstofnotes
+from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNotes, CreateChat, CreateMessage, ReciveID, ReciveGroup, EditNote, lstofnotes, GroupingCustom
 from Auth import get_current_user
 from DB import get_db
 from Models import User, Note, Converstions, Messages
@@ -36,7 +36,7 @@ def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(g
     embeded = get_embedding(toEmbed)
     if not(embeded):
         return
-    newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url )
+    newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url, group = note.group )
     db.add(newNote)
     db.commit()
     return {  'id': newNote.id, 
@@ -64,7 +64,7 @@ def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depend
         raise HTTPException(status_code=400, detail=f"Failed to analyze image: {str(e)}")
     
     newNote = Note(user_id = userID, title = note.title, content = content.content, embedding= embeded, 
-                   tags = note.tags, source_url = note.source_url, note_type="img" )
+                   tags = note.tags, source_url = note.source_url, note_type="img", group= note.group )
     db.add(newNote)
     db.commit()
     return {  'id': newNote.id, 
@@ -103,6 +103,7 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     note.content = newNote.content
     note.tags = newNote.tags
     note.source_url = newNote.source_url
+    # note.group = newNote.group
     toEmbed= newNote.content
     if newNote.title: 
         toEmbed= f'Title: {newNote.title}, content: {newNote.content}'
@@ -117,7 +118,7 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
             'note_type': note.note_type, 
             'group': note.group,
             'created_at': note.created_at,
-            'updated_at': datetime.utcnow
+            'updated_at': datetime.utcnow()
         }
 
 @app.delete("/DelNote")
@@ -305,6 +306,15 @@ def Ungroup(Group: ReciveGroup ,userID=Depends(get_current_user), db=Depends(get
     db.commit()
     return {"ungrouped group:": Group.group}
 
+@app.put("/CustomGroup")
+def CustomGroup(nameAndNotes: GroupingCustom ,userID=Depends(get_current_user), db=Depends(get_db)):
+    for toGroupNote in nameAndNotes.notes:
+        note = db.query(Note).filter(Note.id == toGroupNote.id).first()
+        note.group = nameAndNotes.groupName
+    db.commit()
+    return {nameAndNotes.groupName: nameAndNotes.notes}
+        
+
 # kinda experimental for note population
 @app.post("/Populate")
 def Populate(Data: lstofnotes, userID= Depends(get_current_user), db= Depends(get_db)):
@@ -317,3 +327,4 @@ def Populate(Data: lstofnotes, userID= Depends(get_current_user), db= Depends(ge
         db.add(newNote)
     db.commit()
     return {"Note": "Added"}
+

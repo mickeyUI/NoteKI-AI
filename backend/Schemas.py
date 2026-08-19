@@ -16,11 +16,13 @@ class CreateNote(BaseModel):
     content: str
     tags: str
     source_url: str
+    group: str
 
 class UploadImg(BaseModel):
     title: Optional[str] = "Image"
     tags: str
     source_url: str
+    group: str
     
 class ReturnNotes(BaseModel):
     id: UUID
@@ -43,6 +45,7 @@ class CreateMessage(BaseModel):
     conversation_id: str
     role: str
     content: str
+    
 
 
 
@@ -58,6 +61,12 @@ class EditNote(BaseModel):
     content: str
     tags: str
     source_url: str
+    # group: str
+
+class GroupingCustom(BaseModel):
+    groupName: str
+    notes: list[ReturnNotes]
+    
 
 # this is to populate with data instead of manual entering each
 class noticas(BaseModel):

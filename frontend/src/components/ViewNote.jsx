@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { X, Plus, Sparkles, Loader2, Edit } from "lucide-react";
-import { disableInstantTransitions } from "framer-motion";
+import { useState, useEffect } from "react";
+import { X, Sparkles, Loader2, Edit } from "lucide-react";
+import {} from "framer-motion";
+// import ComboBox from "./ComboBox";
+import { toast } from "sonner";
 
 export default function ViewNote({
   isOpen,
@@ -8,8 +10,8 @@ export default function ViewNote({
   onSubmit,
   loading,
   noteid,
-  setid,
   notes,
+  folders,
 }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -18,22 +20,25 @@ export default function ViewNote({
   const [sourceUrl, setSourceUrl] = useState(null);
   const [creation, setCreated] = useState("");
   const [noteType, setNoteType] = useState("");
+  const [collection, setCollection] = useState("none");
 
   // When noteid changes, find and populate the note data
+  // if (!noteid || !(notes.length > 0)) {
+  //   return;
+  // }
+  const selectedNote = notes.find((note) => note.id == noteid);
+
   useEffect(() => {
-    if (noteid && notes.length > 0) {
-      const selectedNote = notes.find((note) => note.id == noteid);
-      if (selectedNote) {
-        setId(selectedNote.id);
-        setTitle(selectedNote.title || "");
-        setContent(selectedNote.content || "");
-        setTags(selectedNote.tags || "");
-        setSourceUrl(selectedNote.source_url || "");
-        setCreated(selectedNote.created_at || "");
-        setNoteType(selectedNote.note_type || "");
-      }
-    }
-  }, [noteid, notes, isOpen]);
+    if (!selectedNote) return;
+    setId(selectedNote.id);
+    setTitle(selectedNote.title || "");
+    setContent(selectedNote.content || "");
+    setTags(selectedNote.tags || "");
+    setSourceUrl(selectedNote.source_url || "");
+    setCreated(selectedNote.created_at || "");
+    setNoteType(selectedNote.note_type || "");
+    // setCollection(selectedNote.group || "none");
+  }, [selectedNote]);
 
   if (!isOpen) return null;
 
@@ -48,6 +53,10 @@ export default function ViewNote({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title || !content) return;
+    // if (!folders.includes(collection)) {
+    //   toast.error("Not a Valid collection");
+    //   return;
+    // }
 
     // Split tags by comma, trim white spaces, filter out empty fields
     const tagArray = tags
@@ -73,7 +82,7 @@ export default function ViewNote({
       />
 
       {/* Modal Card */}
-      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-screen overflow-y-auto">
         <button
           onClick={() => setView(false)}
           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
@@ -123,6 +132,13 @@ export default function ViewNote({
               </div>
             )}
           </div>
+          {/* 
+          <ComboBox
+            key={noteid}
+            folders={folders}
+            folder={collection}
+            setFolder={setCollection}
+          /> */}
 
           <div className="space-y-2">
             <input
@@ -134,7 +150,7 @@ export default function ViewNote({
             />
           </div>
 
-          {sourceUrl == "text" && (
+          {noteType == "text" && (
             <div className="space-y-2">
               <input
                 type="url"

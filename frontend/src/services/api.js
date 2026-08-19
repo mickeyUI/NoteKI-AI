@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient"; // adjust path if needed
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
+// const BASE_URL = "http://127.0.0.1:8000";
 
 export async function apiRequest(endpoint, options = {}) {
   // Get the current Supabase session
@@ -59,6 +60,7 @@ export const api = {
         content: note.content,
         tags: note.tags,
         source_url: note.source_url || "",
+        group: note.group,
       }),
     }),
 
@@ -70,6 +72,7 @@ export const api = {
         content: note.content,
         tags: note.tags,
         source_url: note.source_url || "",
+        group: note.group,
       }),
     }),
 
@@ -88,6 +91,7 @@ export const api = {
         content: note.content,
         tags: note.tags,
         source_url: note.sourceUrl || "",
+        // group: note.group,
       }),
     }),
 
@@ -137,6 +141,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({
         group: folder,
+      }),
+    }),
+
+  customGroup: (notes, collectionName) =>
+    apiRequest("/CustomGroup", {
+      method: "PUT",
+      body: JSON.stringify({
+        notes: notes,
+        groupName: collectionName,
       }),
     }),
 

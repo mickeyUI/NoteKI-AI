@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { toast } from "sonner";
+import ComboBox from "./ComboBox";
 
 export default function Upload({
   isOpen,
@@ -15,11 +16,13 @@ export default function Upload({
   onSubmit,
   loading,
   setLoading,
+  folders,
 }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [collection, setCollection] = useState("none");
 
   if (!isOpen) return null;
 
@@ -77,6 +80,7 @@ export default function Upload({
       title,
       tags: tagArray.toString(),
       source_url: publicURL,
+      group: collection,
     });
 
     // Reset values
@@ -84,6 +88,7 @@ export default function Upload({
     setContent("");
     setTags("");
     setSourceUrl("");
+    setCollection("none");
   };
 
   return (
@@ -135,6 +140,12 @@ export default function Upload({
               required
             />
           </div>
+
+          <ComboBox
+            folders={folders}
+            folder={collection}
+            setFolder={setCollection}
+          />
 
           <div className="space-y-2">
             <input

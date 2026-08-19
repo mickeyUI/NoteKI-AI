@@ -1,17 +1,15 @@
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   SquarePen,
   RefreshCw,
   FileText,
-  Pin,
-  Calendar,
-  Trash2Icon,
   SearchIcon,
   UploadIcon,
   UngroupIcon,
-  ArrowBigRight,
   X,
   Menu,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
 import SearchDisplayPopup from "./SearchDisplayPopup";
@@ -37,14 +35,22 @@ export default function NotesFeed({
   openUpload,
   openFolder,
   unGroupNotes,
+  grouping,
   isShowing,
   setPullSidebar,
+  setCreateModel,
 }) {
   const [searchDisplayActive, setSearchDisplayActive] = useState(false);
   const [pgSearchedNotes, setPgSearchedNotes] = useState([]);
   const [pging, setPging] = useState(false);
   const [search, setSearch] = useState("");
-  const notesToDisplay = [...pinnedNotes, ...standardNotes];
+  const ungroupedNotes = useMemo(
+    () => [...pinnedNotes, ...standardNotes].filter((n) => n.group === "none"),
+    [pinnedNotes, standardNotes],
+  );
+  const notesToDisplay = search
+    ? [...pinnedNotes, ...standardNotes]
+    : ungroupedNotes;
   const filteredNotes = notesToDisplay.filter((note) => {
     if (!search) {
       return notesToDisplay;
@@ -56,7 +62,7 @@ export default function NotesFeed({
       note.tags.toLowerCase().includes(query)
     );
   });
-  const MotionNoteCard = motion.create(NoteCards);
+  // const MotionNoteCard = motion.create(NoteCards);
 
   const runPgSearch = async () => {
     if (!search) {
@@ -152,7 +158,6 @@ export default function NotesFeed({
           queriedNotes={pgSearchedNotes}
           loading={pging}
           onTogglePin={onTogglePin}
-          onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
           isSearchActive={isSearchActive}
           formatDate={formatDate}
           handleDeleteNote={handleDeleteNote}
@@ -202,6 +207,15 @@ export default function NotesFeed({
                     : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                 }`}
               >
+                <div
+                  onClick={() => {
+                    setCreateModel(true);
+                  }}
+                  className="flex justify-center items-center border-dashed hover:translate-0.5  rounded-2xl shadow-2xl p-5 min-h-15 relative border-2 border-white/10 transition-all duration-500 ease-in-out"
+                >
+                  <Plus className="w-5 h-5" />
+                </div>
+
                 {folders.map((groupName, indx) => (
                   <div
                     key={indx}
@@ -217,7 +231,12 @@ export default function NotesFeed({
                         unGroupNotes(groupName);
                       }}
                     >
-                      <UngroupIcon className="w-5 h-5 " />
+                      {/* its loading all the components. */}
+                      {false ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <UngroupIcon className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 ))}
@@ -236,7 +255,7 @@ export default function NotesFeed({
                   : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               }`}
             >
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence>
                 {filteredNotes.map((note) => {
                   if (!note) return null;
 
