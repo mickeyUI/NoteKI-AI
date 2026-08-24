@@ -30,7 +30,7 @@ export default function Sidebar({
   pullButton,
 }) {
   return (
-    <aside className="transition-all duration-500 ease-in-out w-64 border-r border-white/5 bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
+    <aside className="transition-all duration-500 ease-in-out w-40 md:w-64 border-r border-white/5 bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
       {/* Top brand portion */}
       <div className="p-5 border-b border-white/5 flex items-center justify-between">
         <span className="font-extrabold text-lg  internal bg-clip-text text-transparent">
@@ -50,7 +50,7 @@ export default function Sidebar({
           </button>
           <button
             onClick={() => pullButton(true)}
-            className="transition-all duration-500 ease-in-out btn-style cursor-pointer"
+            className=" btn-style cursor-pointer"
             title="Collapse Sidebar"
           >
             <ArrowLeftIcon className="w-4 h-4" />

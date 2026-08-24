@@ -5,6 +5,8 @@ from groq import Groq
 from dotenv import load_dotenv
 from google import genai
 from google.genai.types import EmbedContentConfig
+import httpx
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -112,7 +114,7 @@ def convertToEmbedable(text: str):
             "role": "user",
             "content": text,
         }],
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
     )
     return chatCompletion.choices[0].message.content
 
@@ -134,7 +136,7 @@ def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
 def generate(prompt: str):
     groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": prompt}],
         stream=True
     )
@@ -182,9 +184,57 @@ Give this group a short, descriptive name (2-3 words max) that captures what the
 Reply with ONLY the group name, nothing else."""
     groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=20,
+        max_tokens=200,
         stream=False
     )
     return response.choices[0].message.content.strip()
+
+
+async def link_preview(data):
+    async with httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=10
+    ) as client:
+
+        response = await client.get(
+            data.url,
+            headers={
+                "User-Agent": "Mozilla/5.0"
+            }
+        )
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    def get_meta(property_name):
+        tag = soup.find("meta", property=property_name)
+
+        if tag:
+            return tag.get("content")
+
+        return None
+
+    title = get_meta("og:title")
+
+    if not title and soup.title:
+        title = soup.title.string
+
+    description = get_meta("og:description")
+
+    if not description:
+        tag = soup.find("meta", attrs={"name": "description"})
+        if tag:
+            description = tag.get("content")
+
+    image = get_meta("og:image")
+    site_name = get_meta("og:site_name")
+    canonical_url = get_meta("og:url")
+
+    return {
+        "title": title,
+        "description": description,
+        "image": image,
+        "site_name": site_name,
+        "url": canonical_url or str(response.url),
+    }

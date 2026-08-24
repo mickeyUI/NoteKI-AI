@@ -105,7 +105,7 @@ export default function NoteCards({
                     e.stopPropagation();
                     onSelectTag(tag);
                   }}
-                  className={`text-[10px] font-bold btn-style cursor-pointer transition-all ${note.note_type != "text" ? "ml-5" : null}`}
+                  className={`text-[10px] font-bold btn-style cursor-pointer  ${note.note_type != "text" ? "ml-5" : null}`}
                 >
                   {tag}
                 </span>

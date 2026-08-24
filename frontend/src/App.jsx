@@ -115,8 +115,6 @@ export default function App() {
       ]);
       setNotes(fetchedNotes || []);
       setChats(fetchedChats || []);
-      const ungroup = fetchedNotes.filter((note) => note.group == "none");
-      setUngrouped(ungroup);
     } catch (err) {
       console.error("Error loading dashboard data:", err);
     } finally {
@@ -124,6 +122,18 @@ export default function App() {
       setLoadingChats(false);
     }
   };
+
+  useEffect(() => {
+    const ungroup = notes.filter((note) => note.group == "none");
+    setUngrouped(ungroup);
+  }, [notes]);
+
+  const pinnedNotes = ungrouped.filter(
+    (n) => n && n.id && pinnedIds.includes(n.id),
+  );
+  const standardNotes = ungrouped.filter(
+    (n) => n && n.id && !pinnedIds.includes(n.id),
+  );
 
   const setFolders = () => {
     if (!notes || !Array.isArray(notes)) {
@@ -155,13 +165,6 @@ export default function App() {
           day: "numeric",
         });
   };
-
-  const pinnedNotes = ungrouped.filter(
-    (n) => n && n.id && pinnedIds.includes(n.id),
-  );
-  const standardNotes = ungrouped.filter(
-    (n) => n && n.id && !pinnedIds.includes(n.id),
-  );
 
   const handleLogout = async () => {
     console.log("clicked");
@@ -231,13 +234,17 @@ export default function App() {
 
   const handleDeleteNote = async (noteID) => {
     try {
+      const newNote = notes.filter((note) => note.id != noteID);
+      const newUngroupedNotes = notes.filter((note) => note.id != noteID);
+      setUngrouped(newUngroupedNotes);
+      setNotes(newNote);
       const res = await api.deleteNote(noteID);
       if (res) {
-        const newNote = notes.filter((note) => note.id != noteID);
-        setNotes(newNote);
         toast.success("Note Deleted");
       }
     } catch (err) {
+      // setUngrouped((prev) => [...prev, fallback]);
+      // setNotes((prev) => [...prev, fallback]);
       toast.error("Try Again");
       console.log("Error:", err.message);
     }
@@ -373,34 +380,38 @@ export default function App() {
   const handleGrouping = async () => {
     try {
       setGrouping(true);
+      toast.success("Grouping ....");
       const res = await api.groupNotes();
       const updatedNotes = await api.getNotes();
       if (updatedNotes) {
         setNotes(updatedNotes);
       }
+      toast.success("Grouping Finished");
     } catch (err) {
       toast.error("Try Again Later");
       console.error("Failed grouping:", err);
     } finally {
       setGrouping(false);
-      toast.success("Grouping Finished");
     }
   };
 
   const handleUngrouping = async (folder) => {
     try {
       setGrouping(true);
+      toast.success("Ungouping ....");
       const res = await api.ungroupNotes(folder);
       const updatedNotes = await api.getNotes();
+      const ungroupedNotes = notes.filter((note) => note.group == folder);
       if (updatedNotes) {
         setNotes(updatedNotes);
+        setUngrouped((prev) => [...prev, ...ungroupedNotes]);
       }
+      toast.success(`${folder} Ungrouped`);
     } catch (err) {
       toast.error("Try Again Later");
       console.error("ungrouping faild:", err);
     } finally {
       setGrouping(false);
-      toast.success(`${folder} Ungrouped`);
     }
   };
 
@@ -490,6 +501,7 @@ export default function App() {
               isShowing={pullSidebar}
               setPullSidebar={setPullSidebar}
               setCreateModel={setCreateGroupModalOpen}
+              ungroupedNotes={ungrouped}
             />
           </AnimatePresence>
 

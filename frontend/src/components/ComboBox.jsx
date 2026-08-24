@@ -10,7 +10,7 @@ import {
 export default function ComboBox({ folders, folder, setFolder }) {
   const lstOfFolders = [...folders];
   return (
-    <div className="w-120 flex gap-5 items-center ">
+    <div className="w-68 md:w-240 flex gap-5 items-center ">
       <h1 className="internal">Set Collection</h1>
       <Combobox
         modal={false}

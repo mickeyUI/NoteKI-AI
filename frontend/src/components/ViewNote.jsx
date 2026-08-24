@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { X, Sparkles, Loader2, Edit } from "lucide-react";
 import {} from "framer-motion";
 // import ComboBox from "./ComboBox";
-import { toast } from "sonner";
 
 export default function ViewNote({
   isOpen,
@@ -118,7 +117,7 @@ export default function ViewNote({
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="glass-input w-full h-[400px]  py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+                className="glass-input w-full h-50 md:h-[400px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
                 placeholder="Write the core details, ideas, or insights..."
                 required
               />

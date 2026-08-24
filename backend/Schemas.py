@@ -67,7 +67,6 @@ class GroupingCustom(BaseModel):
     groupName: str
     notes: list[ReturnNotes]
     
-
 # this is to populate with data instead of manual entering each
 class noticas(BaseModel):
     title: Optional[str] = "New Note"

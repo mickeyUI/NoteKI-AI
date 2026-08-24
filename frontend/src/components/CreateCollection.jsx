@@ -67,7 +67,7 @@ export default function CreateCollection({
       />
 
       {/* Modal Card */}
-      <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 translate-y-10 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 md:translate-y-10 shadow-2xl border border-white/10 max-h-[90vh] overflow-x-hidden overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 internal hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
@@ -96,7 +96,7 @@ export default function CreateCollection({
             required
           />
 
-          <section className="max-h-[58vh] overflow-y-scroll overflow-x-hidden p-2 flex flex-col gap-5">
+          <section className="h-90 md:max-h-[58vh] overflow-y-scroll overflow-x-hidden p-2 flex flex-col gap-5">
             <div className="border-b-2 border-white flex flex-col gap-5 pb-5">
               {toGroup ? (
                 toGroup.map((note, idx) => (

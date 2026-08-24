@@ -39,18 +39,17 @@ export default function NotesFeed({
   isShowing,
   setPullSidebar,
   setCreateModel,
+  // ungroupedNotes,
 }) {
   const [searchDisplayActive, setSearchDisplayActive] = useState(false);
   const [pgSearchedNotes, setPgSearchedNotes] = useState([]);
   const [pging, setPging] = useState(false);
   const [search, setSearch] = useState("");
-  const ungroupedNotes = useMemo(
-    () => [...pinnedNotes, ...standardNotes].filter((n) => n.group === "none"),
-    [pinnedNotes, standardNotes],
-  );
-  const notesToDisplay = search
-    ? [...pinnedNotes, ...standardNotes]
-    : ungroupedNotes;
+  // const ungroupedNotes = useMemo(
+  //   () => [...pinnedNotes, ...standardNotes].filter((n) => n.group === "none"),
+  //   [pinnedNotes, standardNotes],
+  // );
+  const notesToDisplay = search ? notes : [...pinnedNotes, ...standardNotes];
   const filteredNotes = notesToDisplay.filter((note) => {
     if (!search) {
       return notesToDisplay;
@@ -94,7 +93,7 @@ export default function NotesFeed({
       }`}
     >
       {/* Upper title menu */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-5 md:flex-row md:justify-between mb-8">
         <div className="flex gap-2">
           {isShowing && (
             <button
@@ -119,7 +118,7 @@ export default function NotesFeed({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               type="text"
-              className="w-full focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10"
+              className="w-full focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10 transition-all ease-in-out "
             />
             {search && (
               <button
@@ -197,7 +196,7 @@ export default function NotesFeed({
         <>
           {/* folder setup */}
 
-          {folders.length > 0 && (
+          {true && (
             <div className="flex flex-col gap-4 mb-10">
               <h1 className="internal text-2xl pl-2">Collections</h1>
               <div

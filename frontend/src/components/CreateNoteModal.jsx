@@ -90,7 +90,7 @@ export default function CreateNoteModal({
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="glass-input w-full h-[400px]  py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm resize-none"
+              className="glass-input w-full h-50 md:h-[400px]  py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm resize-none"
               placeholder="Take a note, ideas, or insights..."
               required
             />

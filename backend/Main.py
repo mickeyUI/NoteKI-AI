@@ -5,12 +5,13 @@ from Schemas import Register, Login, CreateNote,UploadImg , Question, ReturnNote
 from Auth import get_current_user
 from DB import get_db
 from Models import User, Note, Converstions, Messages
-from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group
+from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group, link_preview
 from fastapi.responses import StreamingResponse
 import json
 import numpy as np
 import hdbscan
 from datetime import datetime
+
 
 app = FastAPI()
 
@@ -22,14 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Citation"]
 )
-
-
 #letter for onboarding and stuff
 # @app.post("/Register")
 # def RegisterUser(register: Register, db = Depends(get_db)):
 
 @app.post("/AddNote")
-def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
+async def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
     toEmbed= note.content
     if note.title: 
         toEmbed= f'Title: {note.title}, content: {note.content}'
@@ -37,6 +36,10 @@ def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(g
     if not(embeded):
         return
     newNote = Note(user_id = userID,title = note.title, content = note.content, embedding= embeded, tags = note.tags, source_url = note.source_url, group = note.group )
+    metaData = "";
+    if (note.source_url):
+        link = {"id": note.source_url}
+        metaData = await link_preview(link)
     db.add(newNote)
     db.commit()
     return {  'id': newNote.id, 
@@ -259,23 +262,30 @@ def AddMsg(msg: CreateMessage , db = Depends(get_db)):
 
 @app.put("/Group")
 def GroupNotes(
-    userID=Depends(get_current_user),
-    db=Depends(get_db),
+    userID = Depends(get_current_user),
+    db= Depends(get_db),           
 ):
-    notes = db.query(Note).filter(Note.user_id == userID).all()
+    notes = db.query(Note).filter(Note.user_id == userID, Note.group == "none").all()
 
     if not notes:
         raise HTTPException(status_code=404, detail="No notes found")
 
-    embeddings = np.array([note.embedding for note in notes])
+    if len(notes) < 2:
+        return {"groups": {}, "message": "Not enough unassigned notes to form clusters."}
+
+    embeddings = np.array([note.embedding for note in notes], dtype=np.float32)
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    embeddings = embeddings / np.maximum(norms, 1e-12)
 
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=2,
         min_samples=1,
         metric="euclidean",
+        cluster_selection_method="leaf",
     )
 
     labels = clusterer.fit_predict(embeddings).tolist()
+    print("lables", labels)
 
     clusters = {}
     for note, label in zip(notes, labels):
@@ -283,16 +293,20 @@ def GroupNotes(
             continue
         clusters.setdefault(label, []).append(note)
 
-    # Name each cluster individually
     group_names = {}
     for label, group_notes in clusters.items():
         snippet = "\n".join(
             f"- {n.title}: {n.content[:200]}" for n in group_notes
         )
-        group_names[label] = Name_Group(snippet)
+        try:
+            group_name = Name_Group(snippet).strip()
+        except Exception:
+            group_name = ""
+        group_names[str(label)] = group_name or f"Note Group {label + 1}"
 
     for note, label in zip(notes, labels):
-        note.group = group_names.get(label, "none")
+        if label != -1:
+            note.group = group_names.get(str(label), "none")
 
     db.commit()
 
@@ -304,7 +318,7 @@ def Ungroup(Group: ReciveGroup ,userID=Depends(get_current_user), db=Depends(get
     for note in notes:
         note.group = "none"
     db.commit()
-    return {"ungrouped group:": Group.group}
+    return {"ungrouped": Group.group}
 
 @app.put("/CustomGroup")
 def CustomGroup(nameAndNotes: GroupingCustom ,userID=Depends(get_current_user), db=Depends(get_db)):

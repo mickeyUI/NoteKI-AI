@@ -27,12 +27,12 @@ export default function SearchDisplayPopup({
       <div className="absolute z-10 w-auto  h-full bg-1 rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 overflow-y-auto">
         {/* Header */}
         {loading ? (
-          <main className="w-292 h-full pl-20 pt-20">
+          <main className="w-70 md:w-292 h-full md:pl-20 pt-20">
             <Loader2 w-5 h-5 />
             <h1>loading...</h1>
           </main>
         ) : (
-          <main className="grid mb-24 gap-6 transition-all duration-500 ease-in-out grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <main className="grid mb-24 gap-6 transition-all duration-500 ease-in-out grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ">
             {queriedNotes.map((note) => {
               return (
                 <NoteCards
