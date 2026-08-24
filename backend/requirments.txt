@@ -10,4 +10,5 @@ supabase
 groq
 google-genai
 hdbscan
-httpx beautifulsoup4
+httpx 
+beautifulsoup4
