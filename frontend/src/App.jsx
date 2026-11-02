@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { api } from "./services/api";
 import AuthPage from "./components/AuthPage";
 import CreateNoteModal from "./components/CreateNoteModal";
@@ -9,8 +9,6 @@ import ChatInput from "./components/ChatInput";
 import ViewNote from "./components/ViewNote";
 import Upload from "./components/Upload";
 import Folder from "./components/Folder";
-import { FastForward, Heading1 } from "lucide-react";
-import { Button } from "flowbite-react";
 import { toast, Toaster } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./supabaseClient";
@@ -23,6 +21,7 @@ export default function App() {
   const [folder, setFolder] = useState([]);
   const [group, setGroup] = useState("");
   const [ungrouped, setUngrouped] = useState([]);
+  const lastLoadedUserIdRef = useRef(null);
 
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -56,38 +55,64 @@ export default function App() {
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingChats, setLoadingChats] = useState(false);
   const [grouping, setGrouping] = useState(false);
+  const [ungroupingFolder, setUngroupingFolder] = useState(null);
   const [pullSidebar, setPullSidebar] = useState(false);
 
+  const loadDashboardData = useCallback(async () => {
+    setLoadingNotes(true);
+    setLoadingChats(true);
+    try {
+      // Parallel fetch as required: /GetNotes and /Chats
+      const [fetchedNotes, fetchedChats] = await Promise.all([
+        api.getNotes().catch((err) => {
+          console.error("Notes load error:", err);
+          return [];
+        }),
+        api.getChats().catch((err) => {
+          console.error("Chats load error:", err);
+          return [];
+        }),
+      ]);
+      setNotes(Array.isArray(fetchedNotes) ? fetchedNotes : []);
+      setChats(Array.isArray(fetchedChats) ? fetchedChats : []);
+    } catch (err) {
+      console.error("Error loading dashboard data:", err);
+    } finally {
+      setLoadingNotes(false);
+      setLoadingChats(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const initializeAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      setSession(session);
-    };
-
-    initializeAuth();
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (initialSession) {
+        setSession(initialSession);
+      }
+    });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sync token to localStorage and load data
+  // Sync token to localStorage and load data once per authenticated user
   useEffect(() => {
-    if (session) {
-      loadDashboardData();
-      // toast.success("its loads 2 times. don't know why figure it out ");
+    const userId = session?.user?.id;
+    if (userId) {
+      if (lastLoadedUserIdRef.current !== userId) {
+        lastLoadedUserIdRef.current = userId;
+        loadDashboardData();
+      }
     } else {
+      lastLoadedUserIdRef.current = null;
       setNotes([]);
       setChats([]);
     }
-  }, [session]);
+  }, [session?.user?.id, loadDashboardData]);
 
   // Auth failure listener (to handle 401 redirects from the fetch API client)
   useEffect(() => {
@@ -97,31 +122,6 @@ export default function App() {
     window.addEventListener("auth-failed", handleAuthFailed);
     return () => window.removeEventListener("auth-failed", handleAuthFailed);
   }, []);
-
-  const loadDashboardData = async () => {
-    setLoadingNotes(true);
-    setLoadingChats(true);
-    try {
-      // Parallel fetch as required: /GetNotes and /Chats
-      const [fetchedNotes, fetchedChats] = await Promise.all([
-        api.getNotes().catch((err) => {
-          console.error("Notes load error", err);
-          return [];
-        }),
-        api.getChats().catch((err) => {
-          console.error("Chats load error", err.message);
-          return [];
-        }),
-      ]);
-      setNotes(fetchedNotes || []);
-      setChats(fetchedChats || []);
-    } catch (err) {
-      console.error("Error loading dashboard data:", err);
-    } finally {
-      setLoadingNotes(false);
-      setLoadingChats(false);
-    }
-  };
 
   useEffect(() => {
     const ungroup = notes.filter((note) => note.group == "none");
@@ -252,7 +252,7 @@ export default function App() {
 
   const handleDeleteChat = async (chatID) => {
     try {
-      const res = await api.deleteChat(chatID);
+      await api.deleteChat(chatID);
       const newChat = chats.filter((chat) => chat.id != chatID);
       setChats(newChat);
     } catch (err) {
@@ -268,6 +268,16 @@ export default function App() {
     setPinnedIds(nextPinned);
     localStorage.setItem("pinned_notes", JSON.stringify(nextPinned));
   };
+
+  const handleStartNewChat = useCallback(() => {
+    setActiveHistoryItem(null);
+    setSearchQuery("");
+    setAiResponse("");
+    setCitations([]);
+    setUserQuery([]);
+    setAiRes([]);
+    setIsSearchActive(true);
+  }, []);
 
   const handleSearchSubmit = async (e) => {
     e.preventDefault();
@@ -287,7 +297,10 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ question: query }),
+        body: JSON.stringify({
+          question: query,
+          conversation_id: activeHistoryItem?.id || undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -316,19 +329,22 @@ export default function App() {
       }
 
       try {
-        let chatResult = activeHistoryItem || "";
-        if (!activeHistoryItem) {
+        let chatResult = activeHistoryItem;
+        if (!chatResult || !chatResult.id) {
           chatResult = await api.addChat(query);
+          if (chatResult && chatResult.id) {
+            setActiveHistoryItem(chatResult);
+          }
         }
         const chatId = chatResult?.id || "";
 
         const [fetchedUserQuery, fetchedAiRes] = await Promise.all([
           api.addMessage(chatId, query, "user").catch((err) => {
-            console.error("Notes load error", err);
+            console.error("User message save error", err);
             return [];
           }),
           api.addMessage(chatId, fullResponseText, "AI").catch((err) => {
-            console.error("Chats load error", err);
+            console.error("AI message save error", err);
             return [];
           }),
         ]);
@@ -355,24 +371,14 @@ export default function App() {
     setAiResponse("");
     setActiveHistoryItem(null);
     setCitations([]);
+    setUserQuery([]);
+    setAiRes([]);
   }, []);
 
   const handleViewHistoryChat = (chatItem) => {
     setActiveHistoryItem(chatItem);
     setSearchQuery(chatItem.title || "Conversation");
-
-    let responseContent =
-      chatItem.response || chatItem.answer || chatItem.content || "";
-    if (!responseContent && chatItem.messages && chatItem.messages.length > 0) {
-      const lastMsg = chatItem.messages[chatItem.messages.length - 1];
-      responseContent =
-        lastMsg.response || lastMsg.answer || lastMsg.content || "";
-    }
-
-    setAiResponse(
-      responseContent ||
-        "This conversation summary was recorded. No detailed message body was stored.",
-    );
+    setAiResponse("");
     setCitations([]);
     setIsSearchActive(true);
   };
@@ -381,7 +387,7 @@ export default function App() {
     try {
       setGrouping(true);
       toast.success("Grouping ....");
-      const res = await api.groupNotes();
+      await api.groupNotes();
       const updatedNotes = await api.getNotes();
       if (updatedNotes) {
         setNotes(updatedNotes);
@@ -397,9 +403,9 @@ export default function App() {
 
   const handleUngrouping = async (folder) => {
     try {
-      setGrouping(true);
-      toast.success("Ungouping ....");
-      const res = await api.ungroupNotes(folder);
+      setUngroupingFolder(folder);
+      toast.success("Ungrouping ....");
+      await api.ungroupNotes(folder);
       const updatedNotes = await api.getNotes();
       const ungroupedNotes = notes.filter((note) => note.group == folder);
       if (updatedNotes) {
@@ -409,15 +415,15 @@ export default function App() {
       toast.success(`${folder} Ungrouped`);
     } catch (err) {
       toast.error("Try Again Later");
-      console.error("ungrouping faild:", err);
+      console.error("ungrouping failed:", err);
     } finally {
-      setGrouping(false);
+      setUngroupingFolder(null);
     }
   };
 
   const CreateNewCollection = async (notes, collectionName) => {
     try {
-      const res = await api.customGroup(notes, collectionName);
+      await api.customGroup(notes, collectionName);
       const updatedNotes = await api.getNotes();
       if (updatedNotes) {
         setNotes(updatedNotes);
@@ -425,7 +431,7 @@ export default function App() {
       }
     } catch (err) {
       toast.error("Try Again Later");
-      console.error("custom grouping faild:", err);
+      console.error("custom grouping failed:", err);
     }
   };
 
@@ -464,6 +470,7 @@ export default function App() {
               handleGrouping={handleGrouping}
               Grouping={grouping}
               pullButton={setPullSidebar}
+              onStartNewChat={handleStartNewChat}
             />
           </motion.div>
         )}
@@ -498,6 +505,7 @@ export default function App() {
               openFolder={openFolder}
               unGroupNotes={handleUngrouping}
               grouping={grouping}
+              ungroupingFolder={ungroupingFolder}
               isShowing={pullSidebar}
               setPullSidebar={setPullSidebar}
               setCreateModel={setCreateGroupModalOpen}
@@ -518,6 +526,7 @@ export default function App() {
             aiRes={aiRes}
             setNoteViewId={setNoteViewId}
             setNoteViewOpen={setNoteViewOpen}
+            onStartNewChat={handleStartNewChat}
           />
         </div>
       </main>

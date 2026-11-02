@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { X, Plus, Sparkles, Loader2 } from "lucide-react";
 import ComboBox from "./ComboBox";
 

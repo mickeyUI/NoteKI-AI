@@ -1,9 +1,7 @@
-import React, { useState } from "react";
-import { api } from "../services/api";
+import { useState } from "react";
 import ParticleBackground from "./ParticleBackground";
 import { Mail, Lock, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import App from "../App";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -23,57 +21,28 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // Sign In Flow
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) {
-          console.error("LOGIN ERROR:", error);
+          setError(error.message);
           return;
         }
-        return <App />;
-
-        console.log("LOGIN SUCCESS:", data);
       } else {
-        // Sign Up Flow
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
 
         if (error) {
-          console.error("SIGNUP ERROR:", error);
+          setError(error.message);
           return;
         }
 
-        console.log("SIGNUP SUCCESS:", data);
-        return <App />;
-
-        if (data.session) {
-          // User is already logged in
-          console.log("Logged in:", data.session);
-        } else {
-          // Email confirmation is required
-          console.log("Check your email");
-        }
-        // Automatically attempt login upon successful registration
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-          if (error) {
-            console.error("LOGIN ERROR:", error);
-            return;
-          }
-
-          console.log("LOGIN SUCCESS:", data);
-        } catch (error) {
-          console.log("catch", error.message);
-          setIsLogin(true);
+        if (!data.session) {
+          setError("Registration successful! Check your email to confirm your account.");
         }
       }
     } catch (err) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   SquarePen,
   RefreshCw,
@@ -35,7 +35,8 @@ export default function NotesFeed({
   openUpload,
   openFolder,
   unGroupNotes,
-  grouping,
+  _grouping,
+  ungroupingFolder = null,
   isShowing,
   setPullSidebar,
   setCreateModel,
@@ -52,13 +53,13 @@ export default function NotesFeed({
   const notesToDisplay = search ? notes : [...pinnedNotes, ...standardNotes];
   const filteredNotes = notesToDisplay.filter((note) => {
     if (!search) {
-      return notesToDisplay;
+      return true;
     }
     const query = search.toLowerCase();
     return (
-      note.title.toLowerCase().includes(query) ||
-      note.content.toLowerCase().includes(query) ||
-      note.tags.toLowerCase().includes(query)
+      (note?.title || "").toLowerCase().includes(query) ||
+      (note?.content || "").toLowerCase().includes(query) ||
+      (note?.tags || "").toLowerCase().includes(query)
     );
   });
   // const MotionNoteCard = motion.create(NoteCards);
@@ -93,7 +94,7 @@ export default function NotesFeed({
       }`}
     >
       {/* Upper title menu */}
-      <div className="flex flex-col gap-5 md:flex-row md:justify-between mb-8">
+      <div className="flex flex-col gap-5 lg:flex-row md:justify-between mb-8">
         <div className="flex gap-2">
           {isShowing && (
             <button
@@ -154,13 +155,13 @@ export default function NotesFeed({
       {searchDisplayActive && (
         <SearchDisplayPopup
           isOpen={searchDisplayActive}
+          onClose={cancelSearch}
           queriedNotes={pgSearchedNotes}
           loading={pging}
           onTogglePin={onTogglePin}
-          isSearchActive={isSearchActive}
           formatDate={formatDate}
           handleDeleteNote={handleDeleteNote}
-          onSelectTag={(tag) => setInputVal(`#${tag}`)}
+          onSelectTag={onSelectTag}
           setNoteViewId={setNoteViewId}
           setNoteViewOpen={setNoteViewOpen}
         />
@@ -195,53 +196,53 @@ export default function NotesFeed({
       ) : (
         <>
           {/* folder setup */}
-
-          {true && (
-            <div className="flex flex-col gap-4 mb-10">
-              <h1 className="internal text-2xl pl-2">Collections</h1>
+          <div className="flex flex-col gap-4 mb-10">
+            <h1 className="internal text-2xl pl-2">Collections</h1>
+            <div
+              className={`grid gap-6 transition-all duration-500 ease-in-out ${
+                isSearchActive
+                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              }`}
+            >
               <div
-                className={`grid gap-6 transition-all duration-500 ease-in-out ${
-                  isSearchActive
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                }`}
+                onClick={() => {
+                  setCreateModel(true);
+                }}
+                className="flex justify-center items-center border-dashed hover:translate-0.5  rounded-2xl shadow-2xl p-5 min-h-15 relative border-2 border-white/10 transition-all duration-500 ease-in-out cursor-pointer"
               >
-                <div
-                  onClick={() => {
-                    setCreateModel(true);
-                  }}
-                  className="flex justify-center items-center border-dashed hover:translate-0.5  rounded-2xl shadow-2xl p-5 min-h-15 relative border-2 border-white/10 transition-all duration-500 ease-in-out"
-                >
-                  <Plus className="w-5 h-5" />
-                </div>
+                <Plus className="w-5 h-5" />
+              </div>
 
-                {folders.map((groupName, indx) => (
+              {folders.map((groupName, indx) => {
+                const isUngroupingThis = ungroupingFolder === groupName;
+                return (
                   <div
                     key={indx}
                     onClick={() => openFolder(groupName)}
-                    className="glass-panel hover:translate-0.5  rounded-2xl shadow-2xl p-5 flex  justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out"
+                    className="glass-panel hover:translate-0.5 rounded-2xl shadow-2xl p-5 flex justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out cursor-pointer"
                   >
                     <h1 className="truncate">{groupName}</h1>
                     <button
                       title="ungroup"
-                      className="btn-style "
+                      disabled={Boolean(ungroupingFolder)}
+                      className={`btn-style cursor-pointer ${Boolean(ungroupingFolder) && !isUngroupingThis ? "opacity-50 pointer-events-none" : ""}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         unGroupNotes(groupName);
                       }}
                     >
-                      {/* its loading all the components. */}
-                      {false ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                      {isUngroupingThis ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
                       ) : (
                         <UngroupIcon className="w-5 h-5" />
                       )}
                     </button>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )}
+          </div>
 
           {/*  Notes grid / masonry layout */}
           <div className="gap-6 flex flex-col">

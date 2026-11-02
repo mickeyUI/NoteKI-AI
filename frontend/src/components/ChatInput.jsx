@@ -1,4 +1,3 @@
-import React from "react";
 import { Search, Send } from "lucide-react";
 
 export default function ChatInput({

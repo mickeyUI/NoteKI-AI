@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import NoteCards from "./NoteCards";
 
 export default function Folder({
@@ -9,8 +8,6 @@ export default function Folder({
   group,
   onTogglePin,
   onSelectTag,
-  onOpenCreateNoteModal,
-  isSearchActive = false,
   formatDate,
   handleDeleteNote,
   setNoteViewId,

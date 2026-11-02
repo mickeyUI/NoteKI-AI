@@ -1,7 +1,7 @@
 import { supabase } from "../supabaseClient"; // adjust path if needed
 
-const BASE_URL = import.meta.env.VITE_API_URL || "";
-// const BASE_URL = "http://127.0.0.1:8000";
+// const rawBaseUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const BASE_URL = "http://127.0.0.1:8000";
 
 export async function apiRequest(endpoint, options = {}) {
   // Get the current Supabase session
@@ -89,8 +89,7 @@ export const api = {
         id: note.id,
         title: note.title,
         content: note.content,
-        tags: note.tags,
-        source_url: note.sourceUrl || "",
+        source_url: note.source_url ?? note.sourceUrl ?? "",
         // group: note.group,
       }),
     }),

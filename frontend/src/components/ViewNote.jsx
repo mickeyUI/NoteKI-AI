@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { X, Sparkles, Loader2, Edit } from "lucide-react";
-import {} from "framer-motion";
-// import ComboBox from "./ComboBox";
 
 export default function ViewNote({
   isOpen,
@@ -10,21 +8,15 @@ export default function ViewNote({
   loading,
   noteid,
   notes,
-  folders,
 }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
-  const [sourceUrl, setSourceUrl] = useState(null);
+  const [sourceUrl, setSourceUrl] = useState("");
   const [creation, setCreated] = useState("");
   const [noteType, setNoteType] = useState("");
-  const [collection, setCollection] = useState("none");
 
-  // When noteid changes, find and populate the note data
-  // if (!noteid || !(notes.length > 0)) {
-  //   return;
-  // }
   const selectedNote = notes.find((note) => note.id == noteid);
 
   useEffect(() => {
@@ -36,7 +28,6 @@ export default function ViewNote({
     setSourceUrl(selectedNote.source_url || "");
     setCreated(selectedNote.created_at || "");
     setNoteType(selectedNote.note_type || "");
-    // setCollection(selectedNote.group || "none");
   }, [selectedNote]);
 
   if (!isOpen) return null;
@@ -52,10 +43,6 @@ export default function ViewNote({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title || !content) return;
-    // if (!folders.includes(collection)) {
-    //   toast.error("Not a Valid collection");
-    //   return;
-    // }
 
     // Split tags by comma, trim white spaces, filter out empty fields
     const tagArray = tags
@@ -68,6 +55,7 @@ export default function ViewNote({
       title,
       content,
       tags: tagArray.toString(),
+      source_url: sourceUrl,
       sourceUrl,
     });
   };

@@ -1,9 +1,6 @@
-import React from "react";
 import {
-  Sparkles,
   Pin,
   History,
-  Plus,
   MessageSquare,
   DeleteIcon,
   LogOut,
@@ -11,6 +8,7 @@ import {
   FolderIcon,
   ArrowLeftIcon,
   Loader2,
+  Plus,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -22,12 +20,11 @@ export default function Sidebar({
   onSelectShortcut,
   onTogglePin,
   onLogout,
-  onOpenCreateNoteModal,
   toggleDelete,
   handleGrouping,
-  handleCollapseSidebar,
   Grouping,
   pullButton,
+  onStartNewChat,
 }) {
   return (
     <aside className="transition-all duration-500 ease-in-out w-40 md:w-64 border-r border-white/5 bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
@@ -96,11 +93,22 @@ export default function Sidebar({
 
       {/* Bottom Section (Conversation History) */}
       <div className="flex-1 overflow-y-auto px-4 py-2 border-t border-white/5">
-        <div className="flex items-center gap-2 mb-3 px-1 text-slate-400">
-          <History className="w-5 h-5 internal shrink-0" />
-          <span className="text-xs font-bold uppercase internal tracking-wider">
-            History
-          </span>
+        <div className="flex items-center justify-between mb-3 px-1 text-slate-400">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 internal shrink-0" />
+            <span className="text-xs font-bold uppercase internal tracking-wider">
+              History
+            </span>
+          </div>
+          {onStartNewChat && (
+            <button
+              onClick={onStartNewChat}
+              className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              title="New Conversation"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-1.5">

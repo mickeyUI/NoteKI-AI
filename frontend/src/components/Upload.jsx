@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   X,
   Plus,
-  Sparkles,
   Loader2,
-  AlignVerticalJustifyEndIcon,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { toast } from "sonner";
@@ -21,7 +19,6 @@ export default function Upload({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
   const [collection, setCollection] = useState("none");
 
   if (!isOpen) return null;
@@ -87,7 +84,6 @@ export default function Upload({
     setTitle("");
     setContent("");
     setTags("");
-    setSourceUrl("");
     setCollection("none");
   };
 

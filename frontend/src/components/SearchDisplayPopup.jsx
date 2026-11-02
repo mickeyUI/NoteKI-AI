@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Plus, X, LoaderIcon, Loader2 } from "lucide-react";
+
+import { Loader2, X } from "lucide-react";
 import NoteCards from "./NoteCards";
 
 export default function SearchDisplayPopup({
   isOpen,
+  onClose,
   queriedNotes = [],
   loading,
   onTogglePin,
   onSelectTag,
-  onOpenCreateNoteModal,
-  isSearchActive = false,
   formatDate,
   handleDeleteNote,
   setNoteViewId,
@@ -17,37 +16,47 @@ export default function SearchDisplayPopup({
 }) {
   if (!isOpen) return null;
   return (
-    <div className=" inset-0 z-50 flex h-full w-full pr-20 select-none">
-      {/* Backdrop mask */}
-      <div
-      // className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
-      // onClick={() => setView(false)}
-      />
-      {/* Modal Card */}
-      <div className="absolute z-10 w-auto  h-full bg-1 rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 overflow-y-auto">
-        {/* Header */}
+    <div className="relative z-40 w-full mb-6 select-none">
+      <div className="w-full bg-[#1e1e1e] rounded-3xl p-6 shadow-2xl border border-white/10 relative">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+          <h2 className="text-sm uppercase tracking-wider font-bold text-slate-300">
+            Semantic Search Results ({queriedNotes?.length || 0})
+          </h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              title="Close search results"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         {loading ? (
-          <main className="w-70 md:w-292 h-full md:pl-20 pt-20">
-            <Loader2 w-5 h-5 />
-            <h1>loading...</h1>
-          </main>
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
+            <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+            <span className="text-sm">Searching vector space...</span>
+          </div>
+        ) : !queriedNotes || queriedNotes.length === 0 ? (
+          <div className="py-8 text-center text-sm text-slate-400">
+            No matching semantic notes found.
+          </div>
         ) : (
-          <main className="grid mb-24 gap-6 transition-all duration-500 ease-in-out grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ">
-            {queriedNotes.map((note) => {
-              return (
-                <NoteCards
-                  key={note.id}
-                  note={note}
-                  onTogglePin={onTogglePin}
-                  formatDate={formatDate}
-                  handleDeleteNote={handleDeleteNote}
-                  setNoteViewId={setNoteViewId}
-                  setNoteViewOpen={setNoteViewOpen}
-                  onSelectTag={onSelectTag}
-                />
-              );
-            })}
-          </main>
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {queriedNotes.map((note) => (
+              <NoteCards
+                key={note.id}
+                note={note}
+                onTogglePin={onTogglePin}
+                formatDate={formatDate}
+                handleDeleteNote={handleDeleteNote}
+                setNoteViewId={setNoteViewId}
+                setNoteViewOpen={setNoteViewOpen}
+                onSelectTag={onSelectTag}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>

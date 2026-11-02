@@ -11,7 +11,18 @@ from bs4 import BeautifulSoup
 load_dotenv()
 
 api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
+
+def get_genai_client():
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return None
+    return genai.Client(api_key=key)
+
+def get_groq_client():
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        return None
+    return Groq(api_key=key)
 
 prompt_text = """
 
@@ -101,7 +112,10 @@ Return only the output.
 """
 
 def convertToEmbedable(text: str):
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    groq_client = get_groq_client()
+    if not groq_client:
+        return text
+    model = os.getenv("GROQ_EMBED_OPT_MODEL", "openai/gpt-oss-120b")
     chatCompletion = groq_client.chat.completions.create(
         messages=[{
             "role": "system",
@@ -114,30 +128,44 @@ def convertToEmbedable(text: str):
             "role": "user",
             "content": text,
         }],
-        model="openai/gpt-oss-120b",
+        model=model,
     )
     return chatCompletion.choices[0].message.content
 
 def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
+    if not text:
+        return None
+    client = get_genai_client()
+    if not client:
+        print("GEMINI_API_KEY not configured")
+        return None
+    model_name = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2")
     try:
         result = client.models.embed_content(
-            model="gemini-embedding-2",
+            model=model_name,
             contents=text,
             config=EmbedContentConfig(
                 task_type=task_type,
                 output_dimensionality=768,
             ),
         )
-        if (result.embeddings is not None):
+        if result and result.embeddings:
             return result.embeddings[0].values
-    except: 
-        return 
+    except Exception as e:
+        print(f"Embedding error with {model_name}: {e}")
+        return None
+    return None
 
-def generate(prompt: str):
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+def generate(prompt: str = None, messages: list = None):
+    groq_client = get_groq_client()
+    if not groq_client:
+        yield "Groq API key not configured."
+        return
+    model = os.getenv("GROQ_CHAT_MODEL", "openai/gpt-oss-120b")
+    chat_messages = messages if messages else [{"role": "user", "content": prompt or ""}]
     response = groq_client.chat.completions.create(
-        model="openai/gpt-oss-120b",
-        messages=[{"role": "user", "content": prompt}],
+        model=model,
+        messages=chat_messages,
         stream=True
     )
     for chunk in response:
@@ -146,9 +174,12 @@ def generate(prompt: str):
             yield content
 
 def Img_Analysis(url: str):
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client = get_groq_client()
+    if not client:
+        raise ValueError("GROQ_API_KEY not configured")
+    model = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
     completion = client.chat.completions.create(
-        model="qwen/qwen3.6-27b",
+        model=model,
         messages=[
             {
                 "role": "user",
@@ -167,8 +198,8 @@ def Img_Analysis(url: str):
             }
         ],
         temperature=1,
-        reasoning_effort="none",      
-        reasoning_format="hidden",    
+        reasoning_effort="none",
+        reasoning_format="hidden",
         max_completion_tokens=300,
         top_p=1,
         stream=False,
@@ -176,65 +207,80 @@ def Img_Analysis(url: str):
     )
     return completion.choices[0].message
 
-
 def Name_Group(notes_snippet: str) -> str:
     prompt = f"""Here are a group of related notes from someone's personal knowledge base:
 {notes_snippet}
 Give this group a short, descriptive name (2-3 words max) that captures what they have in common.
 Reply with ONLY the group name, nothing else."""
-    groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    groq_client = get_groq_client()
+    if not groq_client:
+        return "Note Group"
+    model = os.getenv("GROQ_GROUP_MODEL", "openai/gpt-oss-20b")
     response = groq_client.chat.completions.create(
-        model="openai/gpt-oss-20b",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
         stream=False
     )
     return response.choices[0].message.content.strip()
 
-
 async def link_preview(data):
-    async with httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=10
-    ) as client:
+    url = None
+    if isinstance(data, str):
+        url = data
+    elif isinstance(data, dict):
+        url = data.get("url") or data.get("id")
+    elif hasattr(data, "url"):
+        url = getattr(data, "url")
+    elif hasattr(data, "id"):
+        url = getattr(data, "id")
 
-        response = await client.get(
-            data.url,
-            headers={
-                "User-Agent": "Mozilla/5.0"
-            }
-        )
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        return {}
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    try:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=10
+        ) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0"
+                }
+            )
 
-    def get_meta(property_name):
-        tag = soup.find("meta", property=property_name)
+        if response.status_code >= 400:
+            return {"url": url}
 
-        if tag:
-            return tag.get("content")
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        return None
+        def get_meta(property_name):
+            tag = soup.find("meta", property=property_name)
+            if tag:
+                return tag.get("content")
+            return None
 
-    title = get_meta("og:title")
+        title = get_meta("og:title")
+        if not title and soup.title:
+            title = soup.title.string
 
-    if not title and soup.title:
-        title = soup.title.string
+        description = get_meta("og:description")
+        if not description:
+            tag = soup.find("meta", attrs={"name": "description"})
+            if tag:
+                description = tag.get("content")
 
-    description = get_meta("og:description")
+        image = get_meta("og:image")
+        site_name = get_meta("og:site_name")
+        canonical_url = get_meta("og:url")
 
-    if not description:
-        tag = soup.find("meta", attrs={"name": "description"})
-        if tag:
-            description = tag.get("content")
-
-    image = get_meta("og:image")
-    site_name = get_meta("og:site_name")
-    canonical_url = get_meta("og:url")
-
-    return {
-        "title": title,
-        "description": description,
-        "image": image,
-        "site_name": site_name,
-        "url": canonical_url or str(response.url),
-    }
+        return {
+            "title": title or "",
+            "description": description or "",
+            "image": image or "",
+            "site_name": site_name or "",
+            "url": canonical_url or str(response.url),
+        }
+    except Exception as e:
+        return {"url": url, "error": str(e)}

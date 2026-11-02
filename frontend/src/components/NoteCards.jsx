@@ -1,8 +1,4 @@
-import { div } from "framer-motion/client";
 import {
-  Plus,
-  RefreshCw,
-  FileText,
   Pin,
   Calendar,
   Trash2Icon,

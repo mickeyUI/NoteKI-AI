@@ -3,7 +3,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Column, Integer, ForeignKey, String, Date, DateTime
 from pgvector.sqlalchemy import Vector
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+
+def utc_now():
+    return datetime.now(timezone.utc)
+
 class AuthUser(Base):
     __tablename__ = "users"
     __table_args__ = {"schema": "auth"}
@@ -19,29 +23,34 @@ class User(Base):
 
 class Note(Base):
     __tablename__ = "notes"
-    id = Column(UUID(as_uuid = True), primary_key=True, default = uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    title = Column(String, nullable = False)
-    content = Column(String, nullable = False)
+    title = Column(String, nullable=False)
+    content = Column(String, nullable=False)
     embedding = Column(Vector(768), nullable=True)
     tags = Column(String, nullable=True)
     source_url = Column(String, nullable=True)
-    note_type= Column(String, nullable=True, default="text")
-    group= Column(String, nullable=False, default= "none")
-    created_at = Column(DateTime, default = datetime.utcnow , nullable=False)
-    updated_at = Column(DateTime, default = datetime.utcnow , nullable=False)
+    note_type = Column(String, nullable=True, default="text")
+    group = Column(String, nullable=False, default="none")
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
 
 class Converstions(Base):
     __tablename__ = "converstions"
-    id = Column(UUID(as_uuid = True), primary_key=True, default = uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    title = Column(String, nullable = True)
-    created_at = Column(DateTime , default = datetime.utcnow , nullable=False)
+    title = Column(String, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+# Backward-compatible clean aliases
+Conversation = Converstions
 
 class Messages(Base):
     __tablename__ = "messages"
-    id = Column(UUID(as_uuid = True), primary_key=True, default = uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("converstions.id", ondelete="CASCADE"), nullable=False)
-    role = Column(String, nullable = False)
-    content = Column(String, nullable = False)
+    role = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+
+Message = Messages

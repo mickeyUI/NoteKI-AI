@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary==2.9.12
+pgvector==0.3.6
+python-dotenv
+PyJWT
+requests
+supabase
+groq
+google-genai
+hdbscan
+httpx 
+beautifulsoup4
