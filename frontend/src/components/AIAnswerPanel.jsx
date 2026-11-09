@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { X, RefreshCw, Link, Plus } from "lucide-react";
 import { api } from "../services/api";
-
+import Markdown from "react-markdown";
 function AIAnswerPanel({
   isSearchActive = false,
   searchQuery = "",
@@ -114,19 +114,20 @@ function AIAnswerPanel({
                 key={m.id || idx}
                 className={`rounded-2xl w-fit py-2 px-3 ${m.role === "user" ? "self-end max-w-80 bg-[#1a1a1a]" : "self-start max-w-[90%] bg-white/5"}`}
               >
-                <p>{m.content}</p>
+                <Markdown>{m.content}</Markdown>
               </div>
             ))}
             {isStreaming && (
               <>
-                {searchQuery && !messages.some((m) => m.content === searchQuery) && (
-                  <div className="rounded-2xl w-fit py-2 px-3 self-end max-w-80 bg-[#1a1a1a]">
-                    <p>{searchQuery}</p>
-                  </div>
-                )}
+                {searchQuery &&
+                  !messages.some((m) => m.content === searchQuery) && (
+                    <div className="rounded-2xl w-fit py-2 px-3 self-end max-w-80 bg-[#1a1a1a]">
+                      <p>{searchQuery}</p>
+                    </div>
+                  )}
                 {aiResponse ? (
                   <div className="rounded-2xl w-fit py-2 px-3 self-start max-w-[90%] bg-white/5 border border-white/10">
-                    <p>{aiResponse}</p>
+                    <Markdown>{aiResponse}</Markdown>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2.5 text-slate-500 italic py-8">

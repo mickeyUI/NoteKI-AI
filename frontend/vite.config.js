@@ -14,12 +14,15 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      devOptions: {
+        enabled: false,
+      },
       manifest: {
         name: "Lore Knowledge Base",
         short_name: "Lore",
         description: "Knowledge Base",
-        theme_color: "#01010151",
-        background_color: "#01010151",
+        theme_color: "#010101",
+        background_color: "#010101",
         display: "standalone",
         start_url: "/",
         icons: [
@@ -27,11 +30,13 @@ export default defineConfig({
             src: "/icon.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any",
           },
           {
-            src: "/icon.png",
+            src: "/icon512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable",
           },
         ],
       },

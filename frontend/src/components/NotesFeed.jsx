@@ -113,13 +113,13 @@ export default function NotesFeed({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-start items-center">
           <div className="flex relative">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               type="text"
-              className="w-full focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10 transition-all ease-in-out "
+              className="w-full h-10 focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10 transition-all ease-in-out "
             />
             {search && (
               <button
@@ -131,21 +131,21 @@ export default function NotesFeed({
             )}
           </div>
 
-          <button onClick={runPgSearch} className="btn-style ">
+          <button onClick={runPgSearch} className="btn-style h-10">
             <SearchIcon className="w-4 h-4 " />
           </button>
           <button
             onClick={() => {
               openUpload(true);
             }}
-            className="btn-style"
+            className="btn-style h-10"
             title="Upload Image"
           >
             <UploadIcon />
           </button>
           <button
             onClick={onOpenCreateNoteModal}
-            className="btn-style cursor-pointer"
+            className="btn-style cursor-pointer  h-10"
             title="Create note"
           >
             <SquarePen className="w-5 h-5" />

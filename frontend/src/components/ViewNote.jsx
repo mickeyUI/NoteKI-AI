@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Sparkles, Loader2, Edit } from "lucide-react";
+import Markdown from "react-markdown";
 
 export default function ViewNote({
   isOpen,

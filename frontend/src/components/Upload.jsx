@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  X,
-  Plus,
-  Loader2,
-} from "lucide-react";
+import { X, Plus, Loader2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { toast } from "sonner";
 import ComboBox from "./ComboBox";
@@ -51,6 +47,13 @@ export default function Upload({
     return publicUrlData.publicUrl;
   };
 
+  const reset = () => {
+    setTitle("");
+    setContent("");
+    setTags("");
+    setCollection("none");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -81,10 +84,7 @@ export default function Upload({
     });
 
     // Reset values
-    setTitle("");
-    setContent("");
-    setTags("");
-    setCollection("none");
+    reset();
   };
 
   return (
@@ -92,13 +92,19 @@ export default function Upload({
       {/* Backdrop mask */}
       <div
         className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
-        onClick={onClose}
+        onClick={() => {
+          reset();
+          onClose();
+        }}
       />
 
       {/* Modal Card */}
       <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
         <button
-          onClick={onClose}
+          onClick={() => {
+            reset();
+            onClose();
+          }}
           className="absolute top-4 right-4 p-2 internal hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
@@ -159,7 +165,10 @@ export default function Upload({
           <div className="flex gap-4 pt-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                reset();
+                onClose();
+              }}
               className="flex-1 py-3 px-4 bg-slate-900/50 hover:bg-slate-900 border border-white/5 hover:border-white/10 text-slate-300 font-semibold rounded-xl transition-all duration-200 cursor-pointer text-center"
             >
               Cancel
