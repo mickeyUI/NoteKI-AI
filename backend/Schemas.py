@@ -16,6 +16,7 @@ class CreateNote(BaseModel):
     content: str
     tags: Optional[str] = ""
     source_url: Optional[str] = ""
+    note_type: Optional[str] = "text"
     group: Optional[str] = "none"
 
 class UploadImg(BaseModel):

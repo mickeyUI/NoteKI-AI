@@ -12,3 +12,4 @@ google-genai
 hdbscan
 httpx 
 beautifulsoup4
+python-multipart

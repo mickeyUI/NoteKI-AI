@@ -70,11 +70,11 @@ export default function Upload({
       return;
     }
 
-    // Split tags by comma, trim white spaces, filter out empty fields
+    // Normalize tags: clean commas/spaces and strip leading #
     const tagArray = tags
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+      .split(/[, ]+/)
+      .map((t) => t.replace(/^#+/, "").trim())
+      .filter(Boolean);
 
     onSubmit({
       title,

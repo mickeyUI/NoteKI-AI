@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   SquarePen,
   RefreshCw,
@@ -10,6 +10,7 @@ import {
   Menu,
   Plus,
   Loader2,
+  MicAudioLines,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
 import SearchDisplayPopup from "./SearchDisplayPopup";
@@ -26,6 +27,7 @@ export default function NotesFeed({
   pinnedIds = [],
   onTogglePin,
   onSelectTag,
+  selectedTag = "",
   onOpenCreateNoteModal,
   isSearchActive = false,
   formatDate,
@@ -33,6 +35,7 @@ export default function NotesFeed({
   setNoteViewId,
   setNoteViewOpen,
   openUpload,
+  openVoice,
   openFolder,
   unGroupNotes,
   _grouping,
@@ -46,20 +49,36 @@ export default function NotesFeed({
   const [pgSearchedNotes, setPgSearchedNotes] = useState([]);
   const [pging, setPging] = useState(false);
   const [search, setSearch] = useState("");
-  // const ungroupedNotes = useMemo(
-  //   () => [...pinnedNotes, ...standardNotes].filter((n) => n.group === "none"),
-  //   [pinnedNotes, standardNotes],
-  // );
+
+  useEffect(() => {
+    if (selectedTag) {
+      setSearch(selectedTag.replace(/^#+/, "").trim());
+    }
+  }, [selectedTag]);
+
+  const handleSelectTag = (tag) => {
+    const cleanTag = (tag || "").replace(/^#+/, "").trim();
+    setSearch(cleanTag);
+    if (onSelectTag) onSelectTag(cleanTag);
+  };
+
   const notesToDisplay = search ? notes : [...pinnedNotes, ...standardNotes];
   const filteredNotes = notesToDisplay.filter((note) => {
-    if (!search) {
+    if (!search.trim()) {
       return true;
     }
-    const query = search.toLowerCase();
+    const rawQuery = search.toLowerCase().trim();
+    const cleanQuery = rawQuery.replace(/^#+/, "");
+
+    const title = (note?.title || "").toLowerCase();
+    const content = (note?.content || "").toLowerCase();
+    const tags = (note?.tags || "").toLowerCase();
+
     return (
-      (note?.title || "").toLowerCase().includes(query) ||
-      (note?.content || "").toLowerCase().includes(query) ||
-      (note?.tags || "").toLowerCase().includes(query)
+      title.includes(rawQuery) ||
+      content.includes(rawQuery) ||
+      tags.includes(rawQuery) ||
+      tags.includes(cleanQuery)
     );
   });
   // const MotionNoteCard = motion.create(NoteCards);
@@ -119,7 +138,8 @@ export default function NotesFeed({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               type="text"
-              className="w-full h-10 focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10 transition-all ease-in-out "
+              placeholder="Search notes or #tag..."
+              className="w-full h-10 focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10 transition-all ease-in-out placeholder:text-slate-500 placeholder:text-xs"
             />
             {search && (
               <button
@@ -132,7 +152,7 @@ export default function NotesFeed({
           </div>
 
           <button onClick={runPgSearch} className="btn-style h-10">
-            <SearchIcon className="w-4 h-4 " />
+            <SearchIcon className="w-5 h-5 " />
           </button>
           <button
             onClick={() => {
@@ -141,14 +161,25 @@ export default function NotesFeed({
             className="btn-style h-10"
             title="Upload Image"
           >
-            <UploadIcon />
+            <UploadIcon className="w-5 h-5" />
           </button>
+
           <button
             onClick={onOpenCreateNoteModal}
             className="btn-style cursor-pointer  h-10"
             title="Create note"
           >
             <SquarePen className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={() => {
+              if (openVoice) openVoice(true);
+            }}
+            className="btn-style cursor-pointer h-10"
+            title="Voice Note"
+          >
+            <MicAudioLines className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -161,17 +192,73 @@ export default function NotesFeed({
           onTogglePin={onTogglePin}
           formatDate={formatDate}
           handleDeleteNote={handleDeleteNote}
-          onSelectTag={onSelectTag}
+          onSelectTag={handleSelectTag}
           setNoteViewId={setNoteViewId}
           setNoteViewOpen={setNoteViewOpen}
         />
       )}
       {loadingNotes ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-3">
-          <RefreshCw className="w-8 h-8 animate-spin text-purple-400" />
-          <span className="text-sm font-medium">
-            Retrieving saved memories...
-          </span>
+        <div className="flex-1 flex flex-col gap-10 animate-pulse select-none">
+          {/* Skeleton Collections */}
+          <div className="flex flex-col gap-4">
+            <div className="h-6 w-32 bg-white/10 rounded-lg ml-2" />
+            <div
+              className={`grid gap-6 ${
+                isSearchActive
+                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              }`}
+            >
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="glass-panel rounded-2xl p-5 min-h-15 border border-white/5 bg-white/[0.02] flex items-center justify-between"
+                >
+                  <div className="h-4 w-28 bg-white/10 rounded-md" />
+                  <div className="h-5 w-5 bg-white/5 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Skeleton Notes */}
+          <div className="flex flex-col gap-4">
+            <div className="h-6 w-20 bg-white/10 rounded-lg ml-2" />
+            <div
+              className={`grid mb-24 gap-6 ${
+                isSearchActive
+                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              }`}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div
+                  key={i}
+                  className="glass-panel rounded-2xl p-5 h-[200px] border border-white/5 bg-white/[0.02] flex flex-col justify-between"
+                >
+                  {/* Card actions */}
+                  <div className="flex justify-between -mt-1">
+                    <div className="h-6 w-6 rounded-lg bg-white/10" />
+                    <div className="h-6 w-6 rounded-lg bg-white/10" />
+                  </div>
+                  {/* Card content */}
+                  <div className="space-y-2.5">
+                    <div className="h-4 w-3/5 bg-white/15 rounded-md" />
+                    <div className="h-3 w-full bg-white/5 rounded" />
+                    <div className="h-3 w-4/5 bg-white/5 rounded" />
+                  </div>
+                  {/* Card footer */}
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex gap-1.5">
+                      <div className="h-4 w-12 bg-white/10 rounded-md" />
+                      <div className="h-4 w-10 bg-white/10 rounded-md" />
+                    </div>
+                    <div className="h-3 w-16 bg-white/5 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : notes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto select-none">
@@ -246,7 +333,24 @@ export default function NotesFeed({
 
           {/*  Notes grid / masonry layout */}
           <div className="gap-6 flex flex-col">
-            <h1 className="internal text-2xl pl-2">Notes</h1>
+            <div className="flex items-center justify-between pl-2 pr-2">
+              <h1 className="internal text-2xl">Notes</h1>
+              {search && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Filtering:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-semibold">
+                    <span>{search.startsWith("#") ? search : `#${search}`}</span>
+                    <button
+                      onClick={() => setSearch("")}
+                      className="hover:text-white cursor-pointer"
+                      title="Clear filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
             <motion.div
               layout
               className={`grid mb-24 gap-6 transition-all duration-500 ease-in-out ${
@@ -278,7 +382,7 @@ export default function NotesFeed({
                         note={note}
                         isPinned={isPinned}
                         onTogglePin={onTogglePin}
-                        onSelectTag={onSelectTag}
+                        onSelectTag={handleSelectTag}
                         formatDate={formatDate}
                         handleDeleteNote={handleDeleteNote}
                         setNoteViewId={setNoteViewId}

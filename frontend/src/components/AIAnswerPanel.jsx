@@ -2,6 +2,91 @@ import React, { useEffect, useState, useRef } from "react";
 import { X, RefreshCw, Link, Plus } from "lucide-react";
 import { api } from "../services/api";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+const markdownComponents = {
+  h1: ({ children }) => (
+    <h1 className="text-base font-bold text-white mt-4 mb-1.5 leading-snug">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="text-sm font-bold text-white mt-3 mb-1 leading-snug">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wide mt-3 mb-1">
+      {children}
+    </h3>
+  ),
+  p: ({ children }) => (
+    <p className="mb-1 last:mb-0 leading-relaxed text-slate-300">{children}</p>
+  ),
+  ul: ({ children }) => (
+    <ul className="mb-2 pl-4 space-y-1 list-disc marker:text-purple-400">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="mb-2 pl-4 space-y-1 list-decimal marker:text-purple-400">
+      {children}
+    </ol>
+  ),
+  li: ({ children }) => (
+    <li className="text-slate-300 leading-relaxed">{children}</li>
+  ),
+  code: ({ inline, children }) =>
+    inline ? (
+      <code className="bg-white/10 text-purple-300 font-mono text-[11px] px-1.5 py-0.5 rounded">
+        {children}
+      </code>
+    ) : (
+      <pre className="bg-black/40 border border-white/10 rounded-xl p-3 my-2 overflow-x-auto">
+        <code className="font-mono text-[11px] text-green-300 leading-relaxed">
+          {children}
+        </code>
+      </pre>
+    ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-purple-500 pl-3 my-2 italic text-slate-400">
+      {children}
+    </blockquote>
+  ),
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="text-purple-400 underline underline-offset-2 hover:text-purple-300 transition-colors"
+    >
+      {children}
+    </a>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold text-white">{children}</strong>
+  ),
+  em: ({ children }) => (
+    <em className="italic text-slate-300">{children}</em>
+  ),
+  hr: () => <hr className="border-white/10 my-3" />,
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-2">
+      <table className="text-xs w-full border-collapse">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border border-white/10 bg-white/5 px-3 py-1.5 text-left font-semibold text-slate-200">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-white/10 px-3 py-1.5 text-slate-300">
+      {children}
+    </td>
+  ),
+};
+
 function AIAnswerPanel({
   isSearchActive = false,
   searchQuery = "",
@@ -108,13 +193,13 @@ function AIAnswerPanel({
           <p className="text-[10px] uppercase font-bold internal tracking-wider">
             Conversation
           </p>
-          <div className="text-sm internal leading-relaxed whitespace-pre-wrap flex flex-col gap-2 justify-center">
+          <div className="text-sm internal leading-relaxed flex flex-col gap-2 justify-center">
             {messages.map((m, idx) => (
               <div
                 key={m.id || idx}
                 className={`rounded-2xl w-fit py-2 px-3 ${m.role === "user" ? "self-end max-w-80 bg-[#1a1a1a]" : "self-start max-w-[90%] bg-white/5"}`}
               >
-                <Markdown>{m.content}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{m.content}</Markdown>
               </div>
             ))}
             {isStreaming && (
@@ -127,7 +212,7 @@ function AIAnswerPanel({
                   )}
                 {aiResponse ? (
                   <div className="rounded-2xl w-fit py-2 px-3 self-start max-w-[90%] bg-white/5 border border-white/10">
-                    <Markdown>{aiResponse}</Markdown>
+                    <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{aiResponse}</Markdown>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2.5 text-slate-500 italic py-8">

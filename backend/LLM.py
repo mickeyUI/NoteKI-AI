@@ -1,16 +1,16 @@
 import os
-import requests
-import json
-from groq import Groq
+
+import httpx
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from google import genai
 from google.genai.types import EmbedContentConfig
-import httpx
-from bs4 import BeautifulSoup
+from groq import Groq
 
 load_dotenv()
 
 api_key = os.environ.get("GEMINI_API_KEY")
+
 
 def get_genai_client():
     key = os.environ.get("GEMINI_API_KEY")
@@ -18,11 +18,13 @@ def get_genai_client():
         return None
     return genai.Client(api_key=key)
 
+
 def get_groq_client():
     key = os.environ.get("GROQ_API_KEY")
     if not key:
         return None
     return Groq(api_key=key)
+
 
 prompt_text = """
 
@@ -111,26 +113,30 @@ keyword1, keyword2, keyword3, keyword4, ...
 Return only the output.
 """
 
+
 def convertToEmbedable(text: str):
     groq_client = get_groq_client()
     if not groq_client:
         return text
     model = os.getenv("GROQ_EMBED_OPT_MODEL", "openai/gpt-oss-120b")
     chatCompletion = groq_client.chat.completions.create(
-        messages=[{
-            "role": "system",
-            "content": """You are a search optimization engine for a vector database (pgvector). Your task is to expand the user's input question into
+        messages=[
+            {
+                "role": "system",
+                "content": """You are a search optimization engine for a vector database (pgvector). Your task is to expand the user's input question into
             a semantically rich passage optimized for embedding similarity retrieval.Instructions:Rephrase the input question into a declarative summary
             of the underlying concept.Include likely keywords, synonyms, technical terms, and related entities that a stored note on this topic would contain.
-            Output strictly raw text without conversational introductions, metadata, or markdown wrappers."""
-        },
-        {
-            "role": "user",
-            "content": text,
-        }],
+            Output strictly raw text without conversational introductions, metadata, or markdown wrappers.""",
+            },
+            {
+                "role": "user",
+                "content": text,
+            },
+        ],
         model=model,
     )
     return chatCompletion.choices[0].message.content
+
 
 def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
     if not text:
@@ -156,45 +162,39 @@ def get_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT"):
         return None
     return None
 
+
 def generate(prompt: str = None, messages: list = None):
     groq_client = get_groq_client()
     if not groq_client:
         yield "Groq API key not configured."
         return
     model = os.getenv("GROQ_CHAT_MODEL", "openai/gpt-oss-120b")
-    chat_messages = messages if messages else [{"role": "user", "content": prompt or ""}]
+    chat_messages = (
+        messages if messages else [{"role": "user", "content": prompt or ""}]
+    )
     response = groq_client.chat.completions.create(
-        model=model,
-        messages=chat_messages,
-        stream=True
+        model=model, messages=chat_messages, stream=True
     )
     for chunk in response:
         content = chunk.choices[0].delta.content
         if content:
             yield content
 
+
 def Img_Analysis(url: str):
     client = get_groq_client()
     if not client:
         raise ValueError("GROQ_API_KEY not configured")
-    model = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
+    model = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")
     completion = client.chat.completions.create(
         model=model,
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": prompt_text
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": url
-                        }
-                    }
-                ]
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image_url", "image_url": {"url": url}},
+                ],
             }
         ],
         temperature=1,
@@ -206,6 +206,7 @@ def Img_Analysis(url: str):
         stop=None,
     )
     return completion.choices[0].message
+
 
 def Name_Group(notes_snippet: str) -> str:
     prompt = f"""Here are a group of related notes from someone's personal knowledge base:
@@ -220,9 +221,10 @@ Reply with ONLY the group name, nothing else."""
         model=model,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
-        stream=False
+        stream=False,
     )
     return response.choices[0].message.content.strip()
+
 
 async def link_preview(data):
     url = None
@@ -231,24 +233,16 @@ async def link_preview(data):
     elif isinstance(data, dict):
         url = data.get("url") or data.get("id")
     elif hasattr(data, "url"):
-        url = getattr(data, "url")
+        url = data.url
     elif hasattr(data, "id"):
-        url = getattr(data, "id")
+        url = data.id
 
     if not url or not (url.startswith("http://") or url.startswith("https://")):
         return {}
 
     try:
-        async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=10
-        ) as client:
-            response = await client.get(
-                url,
-                headers={
-                    "User-Agent": "Mozilla/5.0"
-                }
-            )
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10) as client:
+            response = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
 
         if response.status_code >= 400:
             return {"url": url}
@@ -284,3 +278,25 @@ async def link_preview(data):
         }
     except Exception as e:
         return {"url": url, "error": str(e)}
+
+
+def transcribe_audio(file_bytes: bytes, filename: str = "audio.wav", prompt: str = None) -> str:
+    client = get_groq_client()
+    if not client:
+        raise ValueError("Groq client not configured. Check GROQ_API_KEY.")
+
+    # Ensure recognized extension for Whisper
+    if not any(filename.lower().endswith(ext) for ext in [".flac", ".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".ogg", ".wav", ".webm"]):
+        filename = f"{filename}.webm"
+
+    kwargs = {
+        "file": (filename, file_bytes),
+        "model": "whisper-large-v3-turbo",
+        "response_format": "json",
+        "temperature": 0.0,
+    }
+    if prompt:
+        kwargs["prompt"] = prompt
+
+    transcription = client.audio.transcriptions.create(**kwargs)
+    return getattr(transcription, "text", str(transcription))

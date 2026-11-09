@@ -1,8 +1,4 @@
-import {
-  Pin,
-  Calendar,
-  Trash2Icon,
-} from "lucide-react";
+import { Pin, Calendar, Trash2Icon, Mic } from "lucide-react";
 
 export default function NoteCards({
   note,
@@ -25,7 +21,7 @@ export default function NoteCards({
         e.stopPropagation();
         toggleVisable(note.id);
       }}
-      className={`glass-panel glass-panel-hover rounded-2xl p-5 flex flex-col justify-between min-w-[280px] ${note.note_type != "text" ? "h-[200px]" : null} max-h-[200px] relative group select-none ${
+      className={`glass-panel glass-panel-hover rounded-2xl p-5 flex flex-col justify-between min-w-[280px] ${note.note_type === "img" ? "h-[200px]" : ""} max-h-[200px] relative group select-none ${
         isPinned ? "border-amber-400 border-2" : ""
       }`}
     >
@@ -59,16 +55,22 @@ export default function NoteCards({
       </div>
       {/* Header details */}
       <div>
-        <h3
-          className={`text-base font-bold internal mb-2 pr-8 transition-colors ${note.note_type != "text" ? "pl-5" : null}`}
-        >
-          {note.title}
-        </h3>
-        {note.note_type === "text" ? (
-          <p className="text-xs internal leading-relaxed line-clamp-2 mb-4 opacity-80">
-            {note.content}
-          </p>
-        ) : (
+        <div className="flex items-center gap-1.5 mb-2 pr-8">
+          {note.note_type === "voice" && (
+            <span
+              className="p-1 rounded-md bg-[#6a994e]/10 text-green-400 shrink-0 opacity-90"
+              title="Voice Note"
+            >
+              <Mic className="w-3 h-3 animate-pulse " />
+            </span>
+          )}
+          <h3
+            className={`text-base font-bold internal truncate transition-colors ${note.note_type === "img" ? "pl-5" : ""}`}
+          >
+            {note.title}
+          </h3>
+        </div>
+        {note.note_type === "img" ? (
           <div className=" max-h-[120px] overflow-hidden absolute top-10 -z-1 left-8 rounded-2xl max-w-[240px]">
             <img
               src={note.source_url || null}
@@ -76,6 +78,10 @@ export default function NoteCards({
               className="rounded-lg h-60 object-cover opacity-100 brightness-30 -z-1 "
             />
           </div>
+        ) : (
+          <p className="text-xs internal leading-relaxed line-clamp-2 mb-4 opacity-80">
+            {note.content}
+          </p>
         )}
       </div>
 
@@ -87,23 +93,23 @@ export default function NoteCards({
             ? note.tags
             : typeof note.tags === "string"
               ? note.tags
-                  .split(",")
-                  .map((t) => t.trim())
+                  .split(/[, ]+/)
+                  .map((t) => t.replace(/^#+/, "").trim())
                   .filter(Boolean)
               : [];
           if (tagsArr.length === 0) return null;
           return (
-            <div className="flex flex-wrap gap-1.5 ">
+            <div className="flex flex-wrap gap-1.5">
               {tagsArr.map((tag, tagIdx) => (
                 <span
                   key={tagIdx}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelectTag(tag);
+                    if (onSelectTag) onSelectTag(tag);
                   }}
-                  className={`text-[10px] font-bold btn-style cursor-pointer  ${note.note_type != "text" ? "ml-5" : null}`}
+                  className={`text-[10px] font-bold btn-style cursor-pointer ${note.note_type === "img" ? "ml-5" : ""}`}
                 >
-                  {tag}
+                  #{tag}
                 </span>
               ))}
             </div>

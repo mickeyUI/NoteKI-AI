@@ -1,7 +1,10 @@
 import { supabase } from "../supabaseClient"; // adjust path if needed
 
-// const rawBaseUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-const BASE_URL = "http://127.0.0.1:8000";
+// In local dev, use local backend so new backend routes work immediately before deploying
+const rawBaseUrl = import.meta.env.DEV
+  ? (import.meta.env.VITE_DEV_API_URL || "http://127.0.0.1:8000")
+  : (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000");
+const BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
 export async function apiRequest(endpoint, options = {}) {
   // Get the current Supabase session
@@ -10,9 +13,13 @@ export async function apiRequest(endpoint, options = {}) {
   } = await supabase.auth.getSession();
 
   const headers = {
-    "Content-Type": "application/json",
     ...options.headers,
   };
+
+  // Only set application/json if body is not FormData
+  if (!(options.body instanceof FormData)) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+  }
 
   // Send Supabase's access token to FastAPI
   if (session?.access_token) {
@@ -60,8 +67,15 @@ export const api = {
         content: note.content,
         tags: note.tags,
         source_url: note.source_url || "",
+        note_type: note.note_type || "text",
         group: note.group,
       }),
+    }),
+
+  transcribeAudio: (formData) =>
+    apiRequest("/TranscribeAudio", {
+      method: "POST",
+      body: formData,
     }),
 
   uploadImg: (note) =>
@@ -89,6 +103,7 @@ export const api = {
         id: note.id,
         title: note.title,
         content: note.content,
+        tags: note.tags ?? "",
         source_url: note.source_url ?? note.sourceUrl ?? "",
         // group: note.group,
       }),

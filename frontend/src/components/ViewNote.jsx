@@ -45,11 +45,11 @@ export default function ViewNote({
     e.preventDefault();
     if (!title || !content) return;
 
-    // Split tags by comma, trim white spaces, filter out empty fields
+    // Normalize tags: clean commas/spaces and strip leading #
     const tagArray = tags
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+      .split(/[, ]+/)
+      .map((t) => t.replace(/^#+/, "").trim())
+      .filter(Boolean);
 
     onSubmit({
       id,
@@ -102,15 +102,23 @@ export default function ViewNote({
           </div>
 
           <div className="space-y-2">
-            {noteType == "text" ? (
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="glass-input w-full h-50 md:h-[400px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
-                placeholder="Write the core details, ideas, or insights..."
-                required
-              />
-            ) : (
+            {noteType === "voice" ? (
+              <div className="space-y-3">
+                {sourceUrl && (
+                  <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold text-purple-300">Voice Recording</span>
+                    <audio controls src={sourceUrl} className="w-full h-9 rounded-lg" />
+                  </div>
+                )}
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="glass-input w-full h-44 md:h-[320px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+                  placeholder="Voice transcription..."
+                  required
+                />
+              </div>
+            ) : noteType === "img" ? (
               <div className="flex justify-center items-center">
                 <img
                   src={sourceUrl}
@@ -118,6 +126,14 @@ export default function ViewNote({
                   className="max-h-[300px] rounded-2xl"
                 />
               </div>
+            ) : (
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="glass-input w-full h-50 md:h-[400px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+                placeholder="Write the core details, ideas, or insights..."
+                required
+              />
             )}
           </div>
           {/* 

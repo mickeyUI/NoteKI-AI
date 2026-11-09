@@ -1,5 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
+import httpx
 from sqlalchemy import text
 from Schemas import (
     Register,
@@ -21,7 +23,7 @@ from Schemas import (
 from Auth import get_current_user
 from DB import get_db, init_db
 from Models import User, Note, Converstions, Messages
-from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group, link_preview
+from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group, link_preview, transcribe_audio
 from fastapi.responses import StreamingResponse
 import json
 import uuid
@@ -67,6 +69,7 @@ async def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Dep
         embedding=embeded,
         tags=note.tags or "",
         source_url=note.source_url or "",
+        note_type=note.note_type or "text",
         group=note.group or "none"
     )
     if note.source_url:
@@ -116,6 +119,39 @@ def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depend
             'created_at': newNote.created_at,
             'updated_at': newNote.updated_at
         }
+
+
+@app.post("/TranscribeAudio")
+async def TranscribeAudioEndpoint(
+    file: Optional[UploadFile] = File(None),
+    audio_url: Optional[str] = Form(None),
+    prompt: Optional[str] = Form(None),
+    userID = Depends(get_current_user)
+):
+    try:
+        if file:
+            filename = file.filename or "audio.webm"
+            file_bytes = await file.read()
+        elif audio_url:
+            async with httpx.AsyncClient(timeout=45) as client:
+                res = await client.get(audio_url)
+                if res.status_code >= 400:
+                    raise HTTPException(status_code=400, detail="Failed to fetch audio from provided URL")
+                file_bytes = res.content
+                filename = audio_url.split("?")[0].split("/")[-1] or "audio.webm"
+        else:
+            raise HTTPException(status_code=400, detail="Either an audio file or an audio_url must be provided.")
+
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="Audio content is empty.")
+
+        text_result = transcribe_audio(file_bytes=file_bytes, filename=filename, prompt=prompt)
+        return {"text": text_result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Transcription error: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 
 @app.get("/GetNote/{noteID}", response_model=ReturnNotes)
@@ -278,12 +314,14 @@ def Search(query: Question, userID = Depends(get_current_user), db = Depends(get
                     updated_at
                 FROM notes
                 WHERE user_id = :user_id
+                  AND (embedding <=> CAST(:embedding AS vector)) < :threshold
                 ORDER BY embedding <=> CAST(:embedding AS vector)
                 LIMIT 5
             """),
             {
                 "user_id": str(userID),
                 "embedding": str(embeded),
+                "threshold": 0.38,
             },
         ).fetchall()
         notes = [

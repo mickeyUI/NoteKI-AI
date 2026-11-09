@@ -8,11 +8,13 @@ import AIAnswerPanel from "./components/AIAnswerPanel";
 import ChatInput from "./components/ChatInput";
 import ViewNote from "./components/ViewNote";
 import Upload from "./components/Upload";
+import VoiceUpload from "./components/VoiceUpload";
 import Folder from "./components/Folder";
 import { toast, Toaster } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./supabaseClient";
 import CreateCollection from "./components/CreateCollection";
+import { Trash2 } from "lucide-react";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -30,6 +32,7 @@ export default function App() {
   const [noteViewLoading, setViewLoading] = useState(false);
   const [noteViewId, setNoteViewId] = useState("");
   const [isUploadOpen, setUploadOpen] = useState(false);
+  const [isVoiceOpen, setVoiceOpen] = useState(false);
   const [isFolderOpen, setFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
@@ -57,6 +60,13 @@ export default function App() {
   const [grouping, setGrouping] = useState(false);
   const [ungroupingFolder, setUngroupingFolder] = useState(null);
   const [pullSidebar, setPullSidebar] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [selectedTag, setSelectedTag] = useState("");
+
+  const handleTagFilter = (tag) => {
+    setSelectedTag(tag);
+    setFolderOpen(false);
+  };
 
   const loadDashboardData = useCallback(async () => {
     setLoadingNotes(true);
@@ -232,19 +242,19 @@ export default function App() {
     }
   };
 
-  const handleDeleteNote = async (noteID) => {
+  const handleDeleteNote = (noteID) => {
+    setDeleteConfirmId(noteID);
+  };
+
+  const confirmDeleteNote = async () => {
+    const noteID = deleteConfirmId;
+    setDeleteConfirmId(null);
     try {
-      const newNote = notes.filter((note) => note.id != noteID);
-      const newUngroupedNotes = notes.filter((note) => note.id != noteID);
-      setUngrouped(newUngroupedNotes);
-      setNotes(newNote);
-      const res = await api.deleteNote(noteID);
-      if (res) {
-        toast.success("Note Deleted");
-      }
+      setNotes((prev) => prev.filter((note) => note.id !== noteID));
+      setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
+      await api.deleteNote(noteID);
+      toast.success("Note Deleted");
     } catch (err) {
-      // setUngrouped((prev) => [...prev, fallback]);
-      // setNotes((prev) => [...prev, fallback]);
       toast.error("Try Again");
       console.log("Error:", err.message);
     }
@@ -494,7 +504,8 @@ export default function App() {
               standardNotes={standardNotes}
               pinnedIds={pinnedIds}
               onTogglePin={togglePin}
-              onSelectTag={(tag) => setInputVal(`#${tag}`)}
+              onSelectTag={handleTagFilter}
+              selectedTag={selectedTag}
               onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
               isSearchActive={isSearchActive}
               formatDate={formatDate}
@@ -502,6 +513,7 @@ export default function App() {
               setNoteViewId={setNoteViewId}
               setNoteViewOpen={setNoteViewOpen}
               openUpload={setUploadOpen}
+              openVoice={setVoiceOpen}
               openFolder={openFolder}
               unGroupNotes={handleUngrouping}
               grouping={grouping}
@@ -564,6 +576,13 @@ export default function App() {
         setLoading={setUploading}
         folders={folder}
       />
+      <VoiceUpload
+        isOpen={isVoiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        onSubmit={handleCreateNote}
+        loading={noteCreationLoading}
+        folders={folder}
+      />
       <Folder
         isOpen={isFolderOpen}
         setView={setFolderOpen}
@@ -574,7 +593,7 @@ export default function App() {
         isSearchActive={isSearchActive}
         formatDate={formatDate}
         handleDeleteNote={handleDeleteNote}
-        onSelectTag={(tag) => setInputVal(`#${tag}`)}
+        onSelectTag={handleTagFilter}
         setNoteViewId={setNoteViewId}
         setNoteViewOpen={setNoteViewOpen}
       />
@@ -588,6 +607,50 @@ export default function App() {
         setUngrouped={setUngrouped}
         folders={folder}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
+            onClick={() => setDeleteConfirmId(null)}
+          />
+          <div className="relative z-10 w-full max-w-md glass-panel rounded-2xl p-6 shadow-2xl border border-white/10 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Delete Memory</h3>
+                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-300">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-white">
+                "{notes.find((n) => n.id === deleteConfirmId)?.title || "this note"}"
+              </span>
+              ?
+            </p>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="py-2 px-4 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteNote}
+                className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+              >
+                Delete Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
