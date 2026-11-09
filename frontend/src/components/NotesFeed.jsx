@@ -11,6 +11,7 @@ import {
   Plus,
   Loader2,
   MicAudioLines,
+  AlertTriangle,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
 import SearchDisplayPopup from "./SearchDisplayPopup";
@@ -20,6 +21,8 @@ import { toast } from "sonner";
 
 export default function NotesFeed({
   loadingNotes = false,
+  notesFetchError = false,
+  onRetryNotes,
   notes = [],
   folders = [],
   pinnedNotes = [],
@@ -259,6 +262,27 @@ export default function NotesFeed({
               ))}
             </div>
           </div>
+        </div>
+      ) : notesFetchError && notes.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto select-none">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl mb-4 text-red-400">
+            <AlertTriangle className="w-10 h-10 mx-auto" />
+          </div>
+          <h3 className="text-lg font-bold text-white mb-2">
+            Couldn't Connect to Server
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed mb-6">
+            Unable to retrieve your saved memories. Please check your connection or verify that the backend server is running.
+          </p>
+          {onRetryNotes && (
+            <button
+              onClick={onRetryNotes}
+              className="py-2.5 px-5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-colors cursor-pointer text-xs flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Connection</span>
+            </button>
+          )}
         </div>
       ) : notes.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto select-none">

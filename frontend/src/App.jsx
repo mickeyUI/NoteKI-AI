@@ -68,25 +68,47 @@ export default function App() {
     setFolderOpen(false);
   };
 
+  const [notesFetchError, setNotesFetchError] = useState(false);
+
   const loadDashboardData = useCallback(async () => {
     setLoadingNotes(true);
     setLoadingChats(true);
+    setNotesFetchError(false);
     try {
+      let notesError = null;
+      let chatsError = null;
+
       // Parallel fetch as required: /GetNotes and /Chats
       const [fetchedNotes, fetchedChats] = await Promise.all([
         api.getNotes().catch((err) => {
           console.error("Notes load error:", err);
-          return [];
+          notesError = err;
+          return null;
         }),
         api.getChats().catch((err) => {
           console.error("Chats load error:", err);
-          return [];
+          chatsError = err;
+          return null;
         }),
       ]);
-      setNotes(Array.isArray(fetchedNotes) ? fetchedNotes : []);
-      setChats(Array.isArray(fetchedChats) ? fetchedChats : []);
+
+      if (notesError) {
+        setNotesFetchError(true);
+        toast.error("Couldn't connect to server: Error fetching notes.");
+      } else if (Array.isArray(fetchedNotes)) {
+        setNotes(fetchedNotes);
+        setNotesFetchError(false);
+      }
+
+      if (chatsError) {
+        toast.warning("Couldn't connect to server: Error fetching chats.");
+      } else if (Array.isArray(fetchedChats)) {
+        setChats(fetchedChats);
+      }
     } catch (err) {
       console.error("Error loading dashboard data:", err);
+      setNotesFetchError(true);
+      toast.error("Couldn't connect to server. Please try again.");
     } finally {
       setLoadingNotes(false);
       setLoadingChats(false);
@@ -498,6 +520,8 @@ export default function App() {
           <AnimatePresence>
             <NotesFeed
               loadingNotes={loadingNotes}
+              notesFetchError={notesFetchError}
+              onRetryNotes={loadDashboardData}
               notes={notes}
               folders={folder}
               pinnedNotes={pinnedNotes}
