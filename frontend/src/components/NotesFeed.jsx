@@ -272,7 +272,8 @@ export default function NotesFeed({
             Couldn't Connect to Server
           </h3>
           <p className="text-xs text-slate-400 leading-relaxed mb-6">
-            Unable to retrieve your saved memories. Please check your connection or verify that the backend server is running.
+            Unable to retrieve your saved memories. Please check your connection
+            or verify that the backend server is running.
           </p>
           {onRetryNotes && (
             <button
@@ -363,7 +364,9 @@ export default function NotesFeed({
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">Filtering:</span>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-semibold">
-                    <span>{search.startsWith("#") ? search : `#${search}`}</span>
+                    <span>
+                      {search.startsWith("#") ? search : `#${search}`}
+                    </span>
                     <button
                       onClick={() => setSearch("")}
                       className="hover:text-white cursor-pointer"

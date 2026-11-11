@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { api } from "./services/api";
 import AuthPage from "./components/AuthPage";
 import CreateNoteModal from "./components/CreateNoteModal";
@@ -15,6 +21,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./supabaseClient";
 import CreateCollection from "./components/CreateCollection";
 import { Trash2 } from "lucide-react";
+import {
+  populate,
+  getAll,
+  updateNote,
+  updateLocalSyncStatus,
+  indexedDelete,
+} from "@/services/indexedDB";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -24,6 +37,7 @@ export default function App() {
   const [group, setGroup] = useState("");
   const [ungrouped, setUngrouped] = useState([]);
   const lastLoadedUserIdRef = useRef(null);
+  const dashboardLoadPromiseRef = useRef(Promise.resolve());
 
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -63,6 +77,8 @@ export default function App() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [selectedTag, setSelectedTag] = useState("");
 
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
   const handleTagFilter = (tag) => {
     setSelectedTag(tag);
     setFolderOpen(false);
@@ -79,31 +95,47 @@ export default function App() {
       let chatsError = null;
 
       // Parallel fetch as required: /GetNotes and /Chats
-      const [fetchedNotes, fetchedChats] = await Promise.all([
-        api.getNotes().catch((err) => {
-          console.error("Notes load error:", err);
-          notesError = err;
-          return null;
-        }),
-        api.getChats().catch((err) => {
-          console.error("Chats load error:", err);
-          chatsError = err;
-          return null;
-        }),
-      ]);
+      if (navigator.onLine) {
+        const [fetchedNotes, fetchedChats] = await Promise.all([
+          api.getNotes().catch((err) => {
+            console.error("Notes load error:", err);
+            notesError = err;
+            return null;
+          }),
+          api.getChats().catch((err) => {
+            console.error("Chats load error:", err);
+            chatsError = err;
+            return null;
+          }),
+        ]);
 
-      if (notesError) {
-        setNotesFetchError(true);
-        toast.error("Couldn't connect to server: Error fetching notes.");
-      } else if (Array.isArray(fetchedNotes)) {
-        setNotes(fetchedNotes);
-        setNotesFetchError(false);
-      }
+        if (notesError) {
+          setNotesFetchError(true);
+          toast.error("Couldn't connect to server: Error fetching notes.");
+        } else if (Array.isArray(fetchedNotes)) {
+          setNotes(fetchedNotes);
+          setNotesFetchError(false);
+        }
 
-      if (chatsError) {
-        toast.warning("Couldn't connect to server: Error fetching chats.");
-      } else if (Array.isArray(fetchedChats)) {
-        setChats(fetchedChats);
+        if (chatsError) {
+          toast.warning("Couldn't connect to server: Error fetching chats.");
+        } else if (Array.isArray(fetchedChats)) {
+          setChats(fetchedChats);
+        }
+
+        // populate(fetchedNotes);
+      } else {
+        try {
+          const fetchedNotes = await getAll();
+          const offlineFilteredNotes = fetchedNotes.filter(
+            (note) => note?.isDeleted != true,
+          );
+          setNotes(offlineFilteredNotes);
+          toast.success("Working Offline");
+        } catch (e) {
+          toast.error("Couldn't Load Offline");
+          console.log("offline load error:", e.message);
+        }
       }
     } catch (err) {
       console.error("Error loading dashboard data:", err);
@@ -113,6 +145,50 @@ export default function App() {
       setLoadingNotes(false);
       setLoadingChats(false);
     }
+  }, []);
+
+  const syncNotes = useCallback(async () => {
+    if (!navigator.onLine) return;
+    const offlineNotes = await getAll();
+    const pendingNotes = offlineNotes.filter(
+      (note) => note.syncStatus == "pending" || note.syncStatus == "error",
+    );
+    if (pendingNotes.length === 0) {
+      console.log("nothing to sync");
+      return false;
+    }
+    let syncedAny = false;
+    for (const pendingNote of pendingNotes) {
+      const { syncStatus, isDeleted, ...serverNote } = pendingNote;
+      if (isDeleted) {
+        try {
+          await api.deleteNote(serverNote.id);
+          try {
+            await indexedDelete(serverNote.id);
+          } catch (e) {
+            console.log("local cleanup failed: ", e.message);
+          }
+          syncedAny = true;
+          continue;
+        } catch (e) {
+          console.error("couldn't sync :", serverNote.id);
+          console.error(e.message);
+          await updateLocalSyncStatus(serverNote.id, "error");
+          continue;
+        }
+      }
+      try {
+        await api.editNote(serverNote);
+        await updateLocalSyncStatus(serverNote.id, "synced");
+        syncedAny = true;
+      } catch (e) {
+        console.error("couldn't sync :", serverNote.id);
+        console.error(e.message);
+        await updateLocalSyncStatus(serverNote.id, "error");
+      }
+    }
+    if (syncedAny) toast.success("synced");
+    return syncedAny;
   }, []);
 
   useEffect(() => {
@@ -137,7 +213,7 @@ export default function App() {
     if (userId) {
       if (lastLoadedUserIdRef.current !== userId) {
         lastLoadedUserIdRef.current = userId;
-        loadDashboardData();
+        dashboardLoadPromiseRef.current = loadDashboardData();
       }
     } else {
       lastLoadedUserIdRef.current = null;
@@ -145,6 +221,39 @@ export default function App() {
       setChats([]);
     }
   }, [session?.user?.id, loadDashboardData]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    let active = true;
+    let syncing = false;
+
+    const syncAndRefresh = async () => {
+      try {
+        if (!active || !navigator.onLine || syncing) return;
+
+        syncing = true;
+        const syncedAny = await syncNotes();
+        await dashboardLoadPromiseRef.current;
+        if (syncedAny && active) {
+          dashboardLoadPromiseRef.current = loadDashboardData();
+          await dashboardLoadPromiseRef.current;
+        }
+      } catch (error) {
+        console.error("Offline note sync failed:", error);
+      } finally {
+        syncing = false;
+      }
+    };
+
+    window.addEventListener("online", syncAndRefresh);
+    void syncAndRefresh();
+
+    return () => {
+      active = false;
+      window.removeEventListener("online", syncAndRefresh);
+    };
+  }, [session?.user?.id, loadDashboardData, syncNotes]);
 
   // Auth failure listener (to handle 401 redirects from the fetch API client)
   useEffect(() => {
@@ -245,6 +354,30 @@ export default function App() {
   };
 
   const handleEditNote = async (noteData) => {
+    if (!navigator.onLine) {
+      try {
+        setViewLoading(true);
+        const toBeModified = notes.find((note) => note.id == noteData.id);
+        if (!toBeModified) {
+          console.error("note couldn't be found");
+          return;
+        }
+        const result = await updateNote({
+          ...toBeModified,
+          ...noteData,
+          syncStatus: "pending",
+        });
+        const newNotes = notes.filter((note) => note.id != noteData.id);
+        setNotes([{ ...toBeModified, ...noteData }, ...newNotes]);
+        console.log(result);
+      } catch (e) {
+        console.error("offline update failed", e.message);
+      } finally {
+        setViewLoading(false);
+        setNoteViewOpen(false);
+      }
+      return;
+    }
     try {
       setViewLoading(true);
       const newNote = await api.editNote(noteData);
@@ -271,13 +404,38 @@ export default function App() {
   const confirmDeleteNote = async () => {
     const noteID = deleteConfirmId;
     setDeleteConfirmId(null);
+    if (!navigator.onLine) {
+      try {
+        const toBeModified = notes.find((note) => note.id == noteID);
+        await updateNote({
+          ...toBeModified,
+          isDeleted: true,
+          syncStatus: "pending",
+        });
+        const newNotes = notes.filter((note) => note.id != noteID);
+        setNotes(newNotes);
+        return;
+      } catch (e) {
+        toast.error("Try Again Later");
+        console.error(e.message);
+        return;
+      }
+    }
+    const deletedNote = notes.find((note) => note.id == noteID);
     try {
       setNotes((prev) => prev.filter((note) => note.id !== noteID));
       setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
       await api.deleteNote(noteID);
+      try {
+        await indexedDelete(noteID);
+      } catch (e) {
+        console.log("local cleanup failed: ", e.message);
+      }
       toast.success("Note Deleted");
     } catch (err) {
       toast.error("Try Again");
+      setNotes((prev) => [deletedNote, ...prev]);
+      setUngrouped((prev) => [deletedNote, ...prev]);
       console.log("Error:", err.message);
     }
   };
@@ -645,14 +803,21 @@ export default function App() {
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Delete Memory</h3>
-                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+                <h3 className="text-base font-bold text-white">
+                  Delete Memory
+                </h3>
+                <p className="text-xs text-slate-400">
+                  This action cannot be undone.
+                </p>
               </div>
             </div>
             <p className="text-sm text-slate-300">
               Are you sure you want to delete{" "}
               <span className="font-semibold text-white">
-                "{notes.find((n) => n.id === deleteConfirmId)?.title || "this note"}"
+                "
+                {notes.find((n) => n.id === deleteConfirmId)?.title ||
+                  "this note"}
+                "
               </span>
               ?
             </p>

@@ -57,7 +57,6 @@ export default function ViewNote({
       content,
       tags: tagArray.toString(),
       source_url: sourceUrl,
-      sourceUrl,
     });
   };
 
@@ -106,8 +105,14 @@ export default function ViewNote({
               <div className="space-y-3">
                 {sourceUrl && (
                   <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-1.5">
-                    <span className="text-[11px] font-semibold text-purple-300">Voice Recording</span>
-                    <audio controls src={sourceUrl} className="w-full h-9 rounded-lg" />
+                    <span className="text-[15px] font-semibold text-green-400/80">
+                      Voice Recording
+                    </span>
+                    <audio
+                      controls
+                      src={sourceUrl}
+                      className="w-full h-9 rounded-lg"
+                    />
                   </div>
                 )}
                 <textarea
