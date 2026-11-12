@@ -63,6 +63,7 @@ export const api = {
     apiRequest("/AddNote", {
       method: "POST",
       body: JSON.stringify({
+        id: note.id,
         title: note.title,
         content: note.content,
         tags: note.tags,
@@ -82,6 +83,7 @@ export const api = {
     apiRequest("/UploadImg", {
       method: "POST",
       body: JSON.stringify({
+        id: note.id,
         title: note.title,
         content: note.content,
         tags: note.tags,

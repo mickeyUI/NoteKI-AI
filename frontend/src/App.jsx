@@ -113,7 +113,34 @@ export default function App() {
           setNotesFetchError(true);
           toast.error("Couldn't connect to server: Error fetching notes.");
         } else if (Array.isArray(fetchedNotes)) {
-          setNotes(fetchedNotes);
+          // Merge with any local pending notes so offline changes remain visible
+          try {
+            const offlineNotes = await getAll();
+            const pendingNotes = offlineNotes.filter(
+              (n) => n && (n.syncStatus === "pending" || n.syncStatus === "error"),
+            );
+            const pendingMap = new Map(pendingNotes.map((n) => [n.id, n]));
+
+            // Safely cache server notes without overwriting pending items
+            await populate(fetchedNotes);
+
+            const serverNoteIds = new Set(fetchedNotes.map((n) => n.id));
+            const unmergedPending = pendingNotes.filter(
+              (n) => !n.isDeleted && !serverNoteIds.has(n.id),
+            );
+
+            const mergedNotes = [
+              ...unmergedPending,
+              ...fetchedNotes
+                .map((fn) => pendingMap.get(fn.id) || fn)
+                .filter((n) => !n.isDeleted),
+            ];
+
+            setNotes(mergedNotes);
+          } catch (e) {
+            console.warn("Merge error, using fetched notes:", e);
+            setNotes(fetchedNotes);
+          }
           setNotesFetchError(false);
         }
 
@@ -122,8 +149,6 @@ export default function App() {
         } else if (Array.isArray(fetchedChats)) {
           setChats(fetchedChats);
         }
-
-        // populate(fetchedNotes);
       } else {
         try {
           const fetchedNotes = await getAll();
@@ -148,10 +173,10 @@ export default function App() {
   }, []);
 
   const syncNotes = useCallback(async () => {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) return false;
     const offlineNotes = await getAll();
     const pendingNotes = offlineNotes.filter(
-      (note) => note.syncStatus == "pending" || note.syncStatus == "error",
+      (note) => note && (note.syncStatus === "pending" || note.syncStatus === "error"),
     );
     if (pendingNotes.length === 0) {
       console.log("nothing to sync");
@@ -159,10 +184,23 @@ export default function App() {
     }
     let syncedAny = false;
     for (const pendingNote of pendingNotes) {
-      const { syncStatus, isDeleted, ...serverNote } = pendingNote;
+      const {
+        syncStatus,
+        syncAction,
+        mediaBlob,
+        mediaFileName,
+        needsTranscription,
+        isDeleted,
+        ...serverNote
+      } = pendingNote;
+
+      // 1. Handle Deletions
       if (isDeleted) {
         try {
-          await api.deleteNote(serverNote.id);
+          // If note was created offline and never reached server, skip server delete
+          if (!syncAction?.startsWith("create")) {
+            await api.deleteNote(serverNote.id);
+          }
           try {
             await indexedDelete(serverNote.id);
           } catch (e) {
@@ -171,23 +209,182 @@ export default function App() {
           syncedAny = true;
           continue;
         } catch (e) {
-          console.error("couldn't sync :", serverNote.id);
-          console.error(e.message);
+          console.error("couldn't sync delete for:", serverNote.id, e.message);
           await updateLocalSyncStatus(serverNote.id, "error");
           continue;
         }
       }
+
+      // 2. Offline Created Image Note
+      if (syncAction === "create_img") {
+        try {
+          let publicUrl = pendingNote.source_url;
+          if (mediaBlob) {
+            const ext = mediaFileName?.split(".").pop() || "png";
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+            const { data, error } = await supabase.storage
+              .from("images")
+              .upload(fileName, mediaBlob);
+            if (error) throw error;
+            const { data: publicUrlData } = supabase.storage
+              .from("images")
+              .getPublicUrl(data.path);
+            publicUrl = publicUrlData.publicUrl;
+          }
+
+          const created = await api.uploadImg({
+            id: pendingNote.id,
+            title: pendingNote.title,
+            content: pendingNote.content,
+            tags: pendingNote.tags,
+            source_url: publicUrl,
+            group: pendingNote.group,
+          });
+
+          await updateNote({
+            ...pendingNote,
+            ...created,
+            source_url: publicUrl,
+            syncStatus: "synced",
+            syncAction: undefined,
+            mediaBlob: undefined,
+          });
+          syncedAny = true;
+          continue;
+        } catch (e) {
+          console.error("Failed to sync offline image:", pendingNote.id, e.message);
+          await updateLocalSyncStatus(pendingNote.id, "error");
+          continue;
+        }
+      }
+
+      // 3. Offline Created Voice Note
+      if (syncAction === "create_voice") {
+        try {
+          let transcriptionText = pendingNote.content;
+          // Run Groq Whisper via backend STT if transcription was deferred offline
+          if (needsTranscription && mediaBlob) {
+            try {
+              const formData = new FormData();
+              formData.append("file", mediaBlob, mediaFileName || "voice.webm");
+              const res = await api.transcribeAudio(formData);
+              if (res?.text) {
+                transcriptionText = res.text;
+              }
+            } catch (trErr) {
+              console.warn("Groq transcription error during sync:", trErr.message);
+            }
+          }
+
+          let publicUrl = pendingNote.source_url;
+          if (mediaBlob) {
+            const ext = mediaFileName?.split(".").pop() || "webm";
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+            const fileType =
+              mediaBlob.type || (ext === "m4a" ? "audio/mp4" : "audio/webm");
+            const uploadOptions = { contentType: fileType, upsert: true };
+            let bucket = "audio";
+            let { data, error } = await supabase.storage
+              .from(bucket)
+              .upload(fileName, mediaBlob, uploadOptions);
+            if (error) {
+              bucket = "images";
+              const retry = await supabase.storage
+                .from(bucket)
+                .upload(fileName, mediaBlob, uploadOptions);
+              data = retry.data;
+              error = retry.error;
+            }
+            if (error) throw error;
+            const { data: publicUrlData } = supabase.storage
+              .from(bucket)
+              .getPublicUrl(data.path);
+            publicUrl = publicUrlData.publicUrl;
+          }
+
+          let title = pendingNote.title;
+          if (
+            (!title || title === "Voice Note" || title === "Voice Memory") &&
+            transcriptionText &&
+            !transcriptionText.startsWith("Voice recording (transcription pending")
+          ) {
+            title = `Voice: ${transcriptionText.slice(0, 30).trim()}...`;
+          }
+
+          const created = await api.addNote({
+            id: pendingNote.id,
+            title: title || "Voice Note",
+            content: transcriptionText,
+            tags: pendingNote.tags,
+            source_url: publicUrl,
+            note_type: "voice",
+            group: pendingNote.group,
+          });
+
+          const syncedNote = {
+            ...pendingNote,
+            ...created,
+            title: title || "Voice Note",
+            content: transcriptionText,
+            source_url: publicUrl,
+            syncStatus: "synced",
+            syncAction: undefined,
+            needsTranscription: false,
+            mediaBlob: mediaBlob, // Keep mediaBlob in IndexedDB so offline playback remains available!
+          };
+
+          await updateNote(syncedNote);
+          setNotes((prev) =>
+            prev.map((n) => (n.id === pendingNote.id ? syncedNote : n)),
+          );
+          syncedAny = true;
+          continue;
+        } catch (e) {
+          console.error("Failed to sync offline voice note:", pendingNote.id, e.message);
+          await updateLocalSyncStatus(pendingNote.id, "error");
+          continue;
+        }
+      }
+
+      // 4. Offline Created Text Note
+      if (syncAction === "create_text") {
+        try {
+          const created = await api.addNote({
+            id: pendingNote.id,
+            title: pendingNote.title,
+            content: pendingNote.content,
+            tags: pendingNote.tags,
+            source_url: pendingNote.source_url || "",
+            note_type: "text",
+            group: pendingNote.group,
+          });
+
+          await updateNote({
+            ...pendingNote,
+            ...created,
+            syncStatus: "synced",
+            syncAction: undefined,
+          });
+          syncedAny = true;
+          continue;
+        } catch (e) {
+          console.error("Failed to sync offline text note:", pendingNote.id, e.message);
+          await updateLocalSyncStatus(pendingNote.id, "error");
+          continue;
+        }
+      }
+
+      // 5. Offline Edited Existing Note
       try {
         await api.editNote(serverNote);
         await updateLocalSyncStatus(serverNote.id, "synced");
         syncedAny = true;
       } catch (e) {
-        console.error("couldn't sync :", serverNote.id);
-        console.error(e.message);
+        console.error("couldn't sync edit for:", serverNote.id, e.message);
         await updateLocalSyncStatus(serverNote.id, "error");
       }
     }
-    if (syncedAny) toast.success("synced");
+    if (syncedAny) toast.success("Offline changes synced!");
     return syncedAny;
   }, []);
 
@@ -317,11 +514,70 @@ export default function App() {
   };
 
   const handleCreateNote = async (noteData) => {
+    if (!navigator.onLine || noteData.isOffline) {
+      const isVoice = noteData.note_type === "voice";
+      const audioBlob = noteData.audioFile || noteData.mediaBlob || null;
+      let playableSourceUrl = noteData.source_url || "";
+      if (audioBlob instanceof Blob) {
+        playableSourceUrl = URL.createObjectURL(audioBlob);
+      }
+
+      const offlineNote = {
+        id: crypto.randomUUID(),
+        title: noteData.title || (isVoice ? "Voice Note" : "New Note"),
+        content:
+          noteData.content ||
+          (isVoice ? "Voice recording (transcription pending sync...)" : ""),
+        tags: noteData.tags || "",
+        source_url: playableSourceUrl,
+        note_type: noteData.note_type || "text",
+        group: noteData.group || "none",
+        mediaBlob: audioBlob,
+        mediaFileName:
+          noteData.audioFile?.name ||
+          (isVoice ? `voice-${Date.now()}.webm` : null),
+        needsTranscription: !!noteData.needsTranscription,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        syncStatus: "pending",
+        syncAction: isVoice ? "create_voice" : "create_text",
+      };
+
+      try {
+        await updateNote(offlineNote);
+        setNotes((prev) => [offlineNote, ...prev]);
+        toast.success(
+          isVoice ? "Voice note saved offline" : "Note saved offline",
+        );
+      } catch (dbErr) {
+        toast.error("Failed to save note offline");
+        console.error("IndexedDB create error:", dbErr);
+      } finally {
+        setNoteCreationLoading(false);
+        setIsNoteModalOpen(false);
+        setVoiceOpen(false);
+      }
+      return;
+    }
+
     setNoteCreationLoading(true);
     try {
+      const isVoice = noteData.note_type === "voice";
+      const audioBlob = noteData.audioFile || noteData.mediaBlob || null;
       const newNote = await api.addNote(noteData);
       if (newNote && newNote.id) {
-        setNotes((prev) => [newNote, ...prev]);
+        const fullNote = {
+          ...newNote,
+          mediaBlob: audioBlob,
+          syncStatus: "synced",
+          isDeleted: false,
+        };
+        setNotes((prev) => [fullNote, ...prev]);
+        try {
+          await updateNote(fullNote);
+        } catch (dbErr) {
+          console.warn("IndexedDB cache failed:", dbErr);
+        }
       } else {
         await api.getNotes().then(setNotes);
       }
@@ -332,21 +588,58 @@ export default function App() {
     } finally {
       setNoteCreationLoading(false);
       setIsNoteModalOpen(false);
+      setVoiceOpen(false);
     }
   };
 
   const handleUploading = async (noteData) => {
+    if (!navigator.onLine || noteData.isOffline) {
+      try {
+        const offlineNote = {
+          id: crypto.randomUUID(),
+          title: noteData.title || "Image Note",
+          content: "",
+          tags: noteData.tags || "",
+          source_url: noteData.source_url || "",
+          mediaBlob: noteData.file || noteData.mediaBlob || null,
+          mediaFileName: noteData.file?.name || `img-${Date.now()}.png`,
+          note_type: "img",
+          group: noteData.group || "none",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          syncStatus: "pending",
+          syncAction: "create_img",
+        };
+        await updateNote(offlineNote);
+        setNotes((prev) => [offlineNote, ...prev]);
+        toast.success("Image saved offline");
+      } catch (dbErr) {
+        toast.error("Failed to save image offline");
+        console.error("IndexedDB upload error:", dbErr);
+      } finally {
+        setUploading(false);
+        setUploadOpen(false);
+      }
+      return;
+    }
+
     try {
+      setUploading(true);
       const newUpload = await api.uploadImg(noteData);
       if (newUpload && newUpload.id) {
-        setNotes(() => [newUpload, ...notes]);
+        setNotes((prev) => [newUpload, ...prev]);
+        try {
+          await updateNote({ ...newUpload, syncStatus: "synced", isDeleted: false });
+        } catch (dbErr) {
+          console.warn("IndexedDB cache failed:", dbErr);
+        }
       } else {
         await api.getNotes().then(setNotes);
       }
       toast.success("Upload Complete");
     } catch (err) {
       toast.error("Try Again");
-      console.log("Failed to create note: " + err.message);
+      console.log("Failed to upload note: " + err.message);
     } finally {
       setUploading(false);
       setUploadOpen(false);
@@ -404,16 +697,27 @@ export default function App() {
   const confirmDeleteNote = async () => {
     const noteID = deleteConfirmId;
     setDeleteConfirmId(null);
+    const targetNote = notes.find((note) => note.id == noteID);
+
     if (!navigator.onLine) {
       try {
-        const toBeModified = notes.find((note) => note.id == noteID);
+        if (targetNote?.syncAction?.startsWith("create")) {
+          // Note created offline and never synced to backend: simply delete locally
+          await indexedDelete(noteID);
+          setNotes((prev) => prev.filter((note) => note.id !== noteID));
+          setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
+          toast.success("Note Deleted");
+          return;
+        }
+
         await updateNote({
-          ...toBeModified,
+          ...targetNote,
           isDeleted: true,
           syncStatus: "pending",
         });
         const newNotes = notes.filter((note) => note.id != noteID);
         setNotes(newNotes);
+        setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
         return;
       } catch (e) {
         toast.error("Try Again Later");
@@ -421,11 +725,16 @@ export default function App() {
         return;
       }
     }
+
     const deletedNote = notes.find((note) => note.id == noteID);
     try {
       setNotes((prev) => prev.filter((note) => note.id !== noteID));
       setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
-      await api.deleteNote(noteID);
+
+      if (!deletedNote?.syncAction?.startsWith("create")) {
+        await api.deleteNote(noteID);
+      }
+
       try {
         await indexedDelete(noteID);
       } catch (e) {

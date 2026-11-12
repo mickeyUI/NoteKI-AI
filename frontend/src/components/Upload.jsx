@@ -58,15 +58,7 @@ export default function Upload({
     e.preventDefault();
 
     if (!title || !content) {
-      toast.error("");
-      return;
-    }
-    setLoading(true);
-    const publicURL = await uploadImage();
-
-    if (!publicURL) {
-      alert("Failed to upload image. Please try again.");
-      setLoading(false);
+      toast.error("Please provide both a title and an image");
       return;
     }
 
@@ -75,6 +67,30 @@ export default function Upload({
       .split(/[, ]+/)
       .map((t) => t.replace(/^#+/, "").trim())
       .filter(Boolean);
+
+    if (!navigator.onLine) {
+      const previewUrl = URL.createObjectURL(content);
+      onSubmit({
+        title,
+        tags: tagArray.toString(),
+        source_url: previewUrl,
+        file: content,
+        group: collection,
+        isOffline: true,
+      });
+      reset();
+      onClose();
+      return;
+    }
+
+    setLoading(true);
+    const publicURL = await uploadImage();
+
+    if (!publicURL) {
+      alert("Failed to upload image. Please try again.");
+      setLoading(false);
+      return;
+    }
 
     onSubmit({
       title,
@@ -118,7 +134,9 @@ export default function Upload({
           <div>
             <h2 className="text-xl font-bold internal">Upload Image</h2>
             <p className="text-xs internal font-medium opacity-80">
-              Add your image or note to your AI knowledge base
+              {!navigator.onLine
+                ? "Offline mode: image saved locally & synced when online"
+                : "Add your image or note to your AI knowledge base"}
             </p>
           </div>
         </div>

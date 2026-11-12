@@ -12,6 +12,7 @@ class Register(BaseModel):
     password: str
 
 class CreateNote(BaseModel):
+    id: Optional[UUID] = None
     title: Optional[str] = "New Note"
     content: str
     tags: Optional[str] = ""
@@ -20,7 +21,9 @@ class CreateNote(BaseModel):
     group: Optional[str] = "none"
 
 class UploadImg(BaseModel):
+    id: Optional[UUID] = None
     title: Optional[str] = "Image"
+    content: Optional[str] = ""
     tags: Optional[str] = ""
     source_url: str
     group: Optional[str] = "none"

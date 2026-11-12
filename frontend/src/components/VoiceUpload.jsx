@@ -49,13 +49,13 @@ export default function VoiceUpload({
 
   if (!isOpen) return null;
 
-  const reset = () => {
+  const reset = (keepPreviewUrl = false) => {
     setTitle("");
     setTags("");
     setCollection("none");
     setAudioFile(null);
     setAudioUrl("");
-    if (audioPreviewUrl && audioPreviewUrl.startsWith("blob:")) {
+    if (!keepPreviewUrl && audioPreviewUrl && audioPreviewUrl.startsWith("blob:")) {
       URL.revokeObjectURL(audioPreviewUrl);
     }
     setAudioPreviewUrl("");
@@ -139,12 +139,14 @@ export default function VoiceUpload({
     if (!file) return "";
     const ext = file.name?.split(".").pop() || "webm";
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const contentType = file.type || (ext === "m4a" ? "audio/mp4" : "audio/webm");
+    const options = { contentType, upsert: true };
 
     // 1. Try 'audio' bucket first
     let bucket = "audio";
     let { data, error } = await supabase.storage
       .from(bucket)
-      .upload(fileName, file);
+      .upload(fileName, file, options);
 
     // 2. If 'audio' bucket fails (RLS policy missing, not found, etc.), fallback to 'images' bucket
     if (error) {
@@ -152,7 +154,9 @@ export default function VoiceUpload({
         `Supabase '${bucket}' bucket upload failed (${error.message}), trying 'images' bucket...`,
       );
       bucket = "images";
-      const retry = await supabase.storage.from(bucket).upload(fileName, file);
+      const retry = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, options);
       data = retry.data;
       error = retry.error;
     }
@@ -174,6 +178,13 @@ export default function VoiceUpload({
   const handleTranscribe = async () => {
     if (!audioFile) {
       toast.error("Please record or select an audio file first.");
+      return;
+    }
+
+    if (!navigator.onLine) {
+      toast.info(
+        "Offline: Audio will be transcribed automatically once internet returns.",
+      );
       return;
     }
 
@@ -209,6 +220,45 @@ export default function VoiceUpload({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!navigator.onLine) {
+      if (!audioFile && !transcribedText.trim()) {
+        toast.error("Please record or select an audio file first.");
+        return;
+      }
+
+      const tagArray = tags
+        .split(/[, ]+/)
+        .map((t) => t.replace(/^#+/, "").trim())
+        .filter(Boolean);
+
+      const resolvedTitle =
+        title.trim() ||
+        (transcribedText.trim()
+          ? `Voice: ${transcribedText.slice(0, 30).trim()}...`
+          : "Voice Note");
+
+      const resolvedContent =
+        transcribedText.trim() ||
+        "Voice recording (transcription pending sync...)";
+
+      onSubmit({
+        title: resolvedTitle,
+        content: resolvedContent,
+        tags: tagArray.toString(),
+        source_url: audioPreviewUrl,
+        audioFile: audioFile,
+        mediaBlob: audioFile,
+        note_type: "voice",
+        group: collection,
+        needsTranscription: !transcribedText.trim(),
+        isOffline: true,
+      });
+
+      reset(true);
+      onClose();
+      return;
+    }
+
     if (!transcribedText.trim()) {
       toast.error("Please transcribe or enter note content before saving.");
       return;
@@ -238,12 +288,14 @@ export default function VoiceUpload({
       title: title.trim() || "Voice Memory",
       content: transcribedText.trim(),
       tags: tagArray.toString(),
-      source_url: publicUrl || "",
+      source_url: publicUrl || audioPreviewUrl || "",
+      audioFile: audioFile,
+      mediaBlob: audioFile,
       note_type: "voice",
       group: collection,
     });
 
-    reset();
+    reset(true);
     onClose();
   };
 
@@ -284,7 +336,9 @@ export default function VoiceUpload({
           <div>
             <h2 className="text-xl font-bold text-white">Voice Note</h2>
             <p className="text-xs text-slate-400 font-medium">
-              Record or upload audio to transcribe with Groq AI
+              {!navigator.onLine
+                ? "Offline: audio saved locally & transcribed when online"
+                : "Record or upload audio to transcribe with Groq AI"}
             </p>
           </div>
         </div>
@@ -407,7 +461,6 @@ export default function VoiceUpload({
                 onChange={(e) => setTranscribedText(e.target.value)}
                 className="glass-input w-full h-32 py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm resize-none leading-relaxed"
                 placeholder="Transcribed text will appear here. You can edit, format, or add notes directly..."
-                required
               />
             </div>
 
@@ -443,7 +496,13 @@ export default function VoiceUpload({
               </button>
               <button
                 type="submit"
-                disabled={loading || transcribing || !transcribedText.trim()}
+                disabled={
+                  loading ||
+                  transcribing ||
+                  (!navigator.onLine
+                    ? !audioFile && !transcribedText.trim()
+                    : !transcribedText.trim())
+                }
                 className="flex-1 py-3 px-4 bg-[#6a994e]/70  hover:bg-[#6a994e] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.2)] cursor-pointer flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (

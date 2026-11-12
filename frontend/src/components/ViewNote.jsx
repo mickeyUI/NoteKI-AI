@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Sparkles, Loader2, Edit } from "lucide-react";
 import Markdown from "react-markdown";
+import { getDB } from "../services/indexedDB";
 
 export default function ViewNote({
   isOpen,
@@ -17,6 +18,8 @@ export default function ViewNote({
   const [sourceUrl, setSourceUrl] = useState("");
   const [creation, setCreated] = useState("");
   const [noteType, setNoteType] = useState("");
+  const [audioError, setAudioError] = useState(false);
+  const audioBlobUrlRef = useRef(null);
 
   const selectedNote = notes.find((note) => note.id == noteid);
 
@@ -26,9 +29,55 @@ export default function ViewNote({
     setTitle(selectedNote.title || "");
     setContent(selectedNote.content || "");
     setTags(selectedNote.tags || "");
-    setSourceUrl(selectedNote.source_url || "");
     setCreated(selectedNote.created_at || "");
     setNoteType(selectedNote.note_type || "");
+    setAudioError(false);
+
+    // Clean up previously created temporary blob URL
+    if (audioBlobUrlRef.current) {
+      URL.revokeObjectURL(audioBlobUrlRef.current);
+      audioBlobUrlRef.current = null;
+    }
+
+    let resolvedSource =
+      selectedNote.source_url || selectedNote.sourceUrl || "";
+
+    // 1. If the selected note in memory has a mediaBlob, generate a fresh live blob URL
+    if (selectedNote.mediaBlob instanceof Blob) {
+      const freshBlob = URL.createObjectURL(selectedNote.mediaBlob);
+      audioBlobUrlRef.current = freshBlob;
+      resolvedSource = freshBlob;
+    }
+
+    setSourceUrl(resolvedSource);
+
+    // 2. If it's a voice note without an active mediaBlob in memory, check IndexedDB cache
+    if (selectedNote.note_type === "voice" && !(selectedNote.mediaBlob instanceof Blob)) {
+      getDB()
+        .then((db) => {
+          const tx = db.transaction("notes", "readonly");
+          const req = tx.objectStore("notes").get(selectedNote.id);
+          req.onsuccess = () => {
+            const stored = req.result;
+            if (stored?.mediaBlob instanceof Blob) {
+              if (audioBlobUrlRef.current) {
+                URL.revokeObjectURL(audioBlobUrlRef.current);
+              }
+              const freshBlob = URL.createObjectURL(stored.mediaBlob);
+              audioBlobUrlRef.current = freshBlob;
+              setSourceUrl(freshBlob);
+            }
+          };
+        })
+        .catch((err) => console.warn("Failed to check IndexedDB for voice blob:", err));
+    }
+
+    return () => {
+      if (audioBlobUrlRef.current) {
+        URL.revokeObjectURL(audioBlobUrlRef.current);
+        audioBlobUrlRef.current = null;
+      }
+    };
   }, [selectedNote]);
 
   if (!isOpen) return null;
@@ -104,15 +153,38 @@ export default function ViewNote({
             {noteType === "voice" ? (
               <div className="space-y-3">
                 {sourceUrl && (
-                  <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-1.5">
-                    <span className="text-[15px] font-semibold text-green-400/80">
-                      Voice Recording
-                    </span>
+                  <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[15px] font-semibold text-green-400/80">
+                        Voice Recording
+                      </span>
+                      {sourceUrl.startsWith("http") && (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-purple-300 hover:text-purple-200 underline cursor-pointer"
+                        >
+                          Direct link
+                        </a>
+                      )}
+                    </div>
                     <audio
+                      key={sourceUrl}
                       controls
+                      preload="auto"
                       src={sourceUrl}
                       className="w-full h-9 rounded-lg"
+                      onError={(e) => {
+                        console.error("Audio playback error for URL:", sourceUrl, e);
+                        setAudioError(true);
+                      }}
                     />
+                    {audioError && (
+                      <p className="text-xs text-red-400 mt-0.5">
+                        Browser could not play this audio source directly. Click "Direct link" above to open or download it.
+                      </p>
+                    )}
                   </div>
                 )}
                 <textarea

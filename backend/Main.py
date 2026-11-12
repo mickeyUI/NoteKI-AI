@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import httpx
@@ -24,7 +25,6 @@ from Auth import get_current_user
 from DB import get_db, init_db
 from Models import User, Note, Converstions, Messages
 from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group, link_preview, transcribe_audio
-from fastapi.responses import StreamingResponse
 import json
 import uuid
 import numpy as np
@@ -50,6 +50,20 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Citation"]
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Server error on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 #letter for onboarding and stuff
 # @app.post("/Register")
 # def RegisterUser(register: Register, db = Depends(get_db)):
@@ -62,33 +76,53 @@ async def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Dep
     embeded = get_embedding(toEmbed)
     if not embeded:
         raise HTTPException(status_code=502, detail="Failed to generate embedding for note. Check GEMINI_API_KEY configuration.")
-    newNote = Note(
-        user_id=userID,
-        title=note.title or "New Note",
-        content=note.content,
-        embedding=embeded,
-        tags=note.tags or "",
-        source_url=note.source_url or "",
-        note_type=note.note_type or "text",
-        group=note.group or "none"
-    )
+
+    existingNote = None
+    if note.id:
+        existingNote = db.query(Note).filter(Note.id == note.id, Note.user_id == userID).first()
+
+    if existingNote:
+        existingNote.title = note.title or existingNote.title
+        existingNote.content = note.content
+        existingNote.embedding = embeded
+        existingNote.tags = note.tags or ""
+        existingNote.source_url = note.source_url or existingNote.source_url
+        existingNote.note_type = note.note_type or existingNote.note_type
+        existingNote.group = note.group or existingNote.group
+        existingNote.updated_at = datetime.now(timezone.utc)
+        targetNote = existingNote
+    else:
+        newNote = Note(
+            id=note.id or uuid.uuid4(),
+            user_id=userID,
+            title=note.title or "New Note",
+            content=note.content,
+            embedding=embeded,
+            tags=note.tags or "",
+            source_url=note.source_url or "",
+            note_type=note.note_type or "text",
+            group=note.group or "none"
+        )
+        db.add(newNote)
+        targetNote = newNote
+
     if note.source_url:
         try:
             await link_preview(note.source_url)
         except Exception as e:
             print(f"Warning: link preview error: {e}")
-    db.add(newNote)
+
     db.commit()
-    db.refresh(newNote)
-    return {  'id': newNote.id, 
-            'title': newNote.title, 
-            'content': newNote.content, 
-            'tags': newNote.tags, 
-            'source_url': newNote.source_url, 
-            'note_type': newNote.note_type, 
-            'group': newNote.group,
-            'created_at': newNote.created_at,
-            'updated_at': newNote.updated_at
+    db.refresh(targetNote)
+    return {  'id': targetNote.id, 
+            'title': targetNote.title, 
+            'content': targetNote.content, 
+            'tags': targetNote.tags, 
+            'source_url': targetNote.source_url, 
+            'note_type': targetNote.note_type, 
+            'group': targetNote.group,
+            'created_at': targetNote.created_at,
+            'updated_at': targetNote.updated_at
         }
 
 @app.post("/UploadImg")
@@ -104,20 +138,46 @@ def UploadImage(note: UploadImg, userID = Depends(get_current_user), db = Depend
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to analyze image: {str(e)}")
     
-    newNote = Note(user_id=userID, title=note.title or "Image Note", content=content.content, embedding=embeded, 
-                   tags=note.tags or "", source_url=note.source_url, note_type="img", group=note.group or "none")
-    db.add(newNote)
+    existingNote = None
+    if note.id:
+        existingNote = db.query(Note).filter(Note.id == note.id, Note.user_id == userID).first()
+
+    if existingNote:
+        existingNote.title = note.title or existingNote.title
+        existingNote.content = content.content
+        existingNote.embedding = embeded
+        existingNote.tags = note.tags or ""
+        existingNote.source_url = note.source_url
+        existingNote.note_type = "img"
+        existingNote.group = note.group or existingNote.group
+        existingNote.updated_at = datetime.now(timezone.utc)
+        targetNote = existingNote
+    else:
+        newNote = Note(
+            id=note.id or uuid.uuid4(),
+            user_id=userID,
+            title=note.title or "Image Note",
+            content=content.content,
+            embedding=embeded, 
+            tags=note.tags or "",
+            source_url=note.source_url,
+            note_type="img",
+            group=note.group or "none"
+        )
+        db.add(newNote)
+        targetNote = newNote
+
     db.commit()
-    db.refresh(newNote)
-    return {  'id': newNote.id, 
-            'title': newNote.title, 
-            'content': newNote.content, 
-            'tags': newNote.tags, 
-            'source_url': newNote.source_url, 
-            'note_type': newNote.note_type, 
-            'group': newNote.group,
-            'created_at': newNote.created_at,
-            'updated_at': newNote.updated_at
+    db.refresh(targetNote)
+    return {  'id': targetNote.id, 
+            'title': targetNote.title, 
+            'content': targetNote.content, 
+            'tags': targetNote.tags, 
+            'source_url': targetNote.source_url, 
+            'note_type': targetNote.note_type, 
+            'group': targetNote.group,
+            'created_at': targetNote.created_at,
+            'updated_at': targetNote.updated_at
         }
 
 
