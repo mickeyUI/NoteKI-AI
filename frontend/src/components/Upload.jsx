@@ -3,6 +3,7 @@ import { X, Plus, Loader2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { toast } from "sonner";
 import ComboBox from "./ComboBox";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function Upload({
   isOpen,
@@ -16,8 +17,6 @@ export default function Upload({
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
   const [collection, setCollection] = useState("none");
-
-  if (!isOpen) return null;
 
   const handleFileChange = async (event) => {
     setContent(event.target.files[0]);
@@ -104,27 +103,39 @@ export default function Upload({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
-      {/* Backdrop mask */}
-      <div
-        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
-        onClick={() => {
-          reset();
-          onClose();
-        }}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
+          {/* Backdrop mask */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            onClick={() => {
+              reset();
+              onClose();
+            }}
+          />
 
-      {/* Modal Card */}
-      <div className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={() => {
-            reset();
-            onClose();
-          }}
-          className="absolute top-4 right-4 p-2 internal hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
+          {/* Modal Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: "spring", stiffness: 350, damping: 26 }}
+            className="relative z-10 w-full max-w-lg glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto"
+          >
+            <button
+              onClick={() => {
+                reset();
+                onClose();
+              }}
+              className="absolute top-4 right-4 p-2 internal hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -207,7 +218,9 @@ export default function Upload({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }

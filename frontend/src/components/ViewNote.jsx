@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Sparkles, Loader2, Edit } from "lucide-react";
 import Markdown from "react-markdown";
 import { getDB } from "../services/indexedDB";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ViewNote({
   isOpen,
@@ -80,8 +81,6 @@ export default function ViewNote({
     };
   }, [selectedNote]);
 
-  if (!isOpen) return null;
-
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-GB", {
@@ -110,21 +109,33 @@ export default function ViewNote({
   };
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 select-none">
-      {/* Backdrop mask */}
-      <div
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity duration-300"
-        onClick={() => setView(false)}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 select-none">
+          {/* Backdrop mask */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            onClick={() => setView(false)}
+          />
 
-      {/* Modal Card */}
-      <div className="relative z-10  lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-screen overflow-y-auto">
-        <button
-          onClick={() => setView(false)}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
+          {/* Modal Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: "spring", stiffness: 350, damping: 26 }}
+            className="relative z-10 lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-screen overflow-y-auto"
+          >
+            <button
+              onClick={() => setView(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -272,7 +283,9 @@ export default function ViewNote({
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
+  )}
+</AnimatePresence>
   );
 }

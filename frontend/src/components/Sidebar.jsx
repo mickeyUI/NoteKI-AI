@@ -25,9 +25,15 @@ export default function Sidebar({
   Grouping,
   pullButton,
   onStartNewChat,
+  isMobile = false,
+  onItemClick,
 }) {
   return (
-    <aside className="transition-all duration-500 ease-in-out w-40 md:w-64 border-r border-white/5 bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none">
+    <aside
+      className={`w-full ${
+        isMobile ? "border-r border-white/10" : "border-r border-white/5"
+      } bg-[#121212] backdrop-blur-md flex flex-col h-full shrink-0 relative z-30 select-none shadow-2xl`}
+    >
       {/* Top brand portion */}
       <div className="p-5 border-b border-white/5 flex items-center justify-between">
         <span className="font-extrabold text-lg  internal bg-clip-text text-transparent">
@@ -73,7 +79,10 @@ export default function Sidebar({
             pinnedNotes.map((note) => (
               <div
                 key={note.id}
-                onClick={() => onSelectShortcut(note.title)}
+                onClick={() => {
+                  onSelectShortcut(note.title);
+                  onItemClick?.();
+                }}
                 className="group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium bg-[#212121] hover:bg-[#302c2c] border-l-2 border-[#cecece] transition-all duration-200 cursor-pointer"
               >
                 <span className="truncate pr-2 internal">{note.title}</span>
@@ -102,7 +111,10 @@ export default function Sidebar({
           </div>
           {onStartNewChat && (
             <button
-              onClick={onStartNewChat}
+              onClick={() => {
+                onStartNewChat();
+                onItemClick?.();
+              }}
               className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
               title="New Conversation"
             >
@@ -127,7 +139,10 @@ export default function Sidebar({
               return (
                 <button
                   key={chat.id}
-                  onClick={() => onViewHistory(chat)}
+                  onClick={() => {
+                    onViewHistory(chat);
+                    onItemClick?.();
+                  }}
                   className={`w-full internal opacity-80 hover:border-cyan-100/20 flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl group text-left text-xs font-medium transition-all duration-200 border cursor-pointer ${
                     isActive
                       ? "bg-slate-900 internal bg-1"

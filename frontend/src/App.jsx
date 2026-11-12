@@ -73,9 +73,39 @@ export default function App() {
   const [loadingChats, setLoadingChats] = useState(false);
   const [grouping, setGrouping] = useState(false);
   const [ungroupingFolder, setUngroupingFolder] = useState(null);
-  const [pullSidebar, setPullSidebar] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+  const [pullSidebar, setPullSidebar] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [selectedTag, setSelectedTag] = useState("");
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile((prevMobile) => {
+        if (!prevMobile && mobile) {
+          // Entering mobile: collapse sidebar by default
+          setPullSidebar(true);
+        } else if (prevMobile && !mobile) {
+          // Entering desktop: show sidebar by default
+          setPullSidebar(false);
+        }
+        return mobile;
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -945,35 +975,89 @@ export default function App() {
   return (
     <div className="flex  h-screen text-slate-100 overflow-hidden font-sans select-none">
       <Toaster position="top-center" theme="light" />
-      {/* Sidebar - Left Panel */}
-      <AnimatePresence>
-        {!pullSidebar && (
-          <motion.div
-            layout
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25 }}
-          >
-            <Sidebar
-              pinnedNotes={pinnedNotes}
-              chats={chats}
-              loadingChats={loadingChats}
-              activeHistoryItem={activeHistoryItem}
-              onViewHistory={handleViewHistoryChat}
-              onSelectShortcut={(title) => setInputVal(title)}
-              onTogglePin={togglePin}
-              onLogout={handleLogout}
-              onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
-              toggleDelete={handleDeleteChat}
-              handleGrouping={handleGrouping}
-              Grouping={grouping}
-              pullButton={setPullSidebar}
-              onStartNewChat={handleStartNewChat}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Sidebar - Floating Drawer on Mobile, Side Panel on Desktop */}
+      {isMobile ? (
+        <AnimatePresence>
+          {!pullSidebar && (
+            <motion.div
+              className="fixed inset-0 z-50 flex"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+            >
+              {/* Backdrop blur overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setPullSidebar(true)}
+                className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm cursor-pointer"
+              />
+
+              {/* Floating Slide-over Drawer */}
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl"
+              >
+                <Sidebar
+                  pinnedNotes={pinnedNotes}
+                  chats={chats}
+                  loadingChats={loadingChats}
+                  activeHistoryItem={activeHistoryItem}
+                  onViewHistory={handleViewHistoryChat}
+                  onSelectShortcut={(title) => setInputVal(title)}
+                  onTogglePin={togglePin}
+                  onLogout={handleLogout}
+                  onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+                  toggleDelete={handleDeleteChat}
+                  handleGrouping={handleGrouping}
+                  Grouping={grouping}
+                  pullButton={setPullSidebar}
+                  onStartNewChat={handleStartNewChat}
+                  isMobile={true}
+                  onItemClick={() => setPullSidebar(true)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ) : (
+        <AnimatePresence initial={false}>
+          {!pullSidebar && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 256, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="overflow-hidden shrink-0 h-full relative z-30"
+            >
+              <div className="w-64 h-full shrink-0">
+                <Sidebar
+                  pinnedNotes={pinnedNotes}
+                  chats={chats}
+                  loadingChats={loadingChats}
+                  activeHistoryItem={activeHistoryItem}
+                  onViewHistory={handleViewHistoryChat}
+                  onSelectShortcut={(title) => setInputVal(title)}
+                  onTogglePin={togglePin}
+                  onLogout={handleLogout}
+                  onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+                  toggleDelete={handleDeleteChat}
+                  handleGrouping={handleGrouping}
+                  Grouping={grouping}
+                  pullButton={setPullSidebar}
+                  onStartNewChat={handleStartNewChat}
+                  isMobile={false}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-screen relative overflow-hidden bg-[#030712]">
@@ -1100,55 +1184,67 @@ export default function App() {
       />
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
-          <div
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300"
-            onClick={() => setDeleteConfirmId(null)}
-          />
-          <div className="relative z-10 w-full max-w-md glass-panel rounded-2xl p-6 shadow-2xl border border-white/10 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-                <Trash2 className="w-5 h-5" />
+      <AnimatePresence>
+        {deleteConfirmId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+              onClick={() => setDeleteConfirmId(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", stiffness: 350, damping: 26 }}
+              className="relative z-10 w-full max-w-md glass-panel rounded-2xl p-6 shadow-2xl border border-white/10 flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Delete Memory
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    This action cannot be undone.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-white">
-                  Delete Memory
-                </h3>
-                <p className="text-xs text-slate-400">
-                  This action cannot be undone.
-                </p>
+              <p className="text-sm text-slate-300">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-white">
+                  "
+                  {notes.find((n) => n.id === deleteConfirmId)?.title ||
+                    "this note"}
+                  "
+                </span>
+                ?
+              </p>
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="py-2 px-4 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteNote}
+                  className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                >
+                  Delete Note
+                </button>
               </div>
-            </div>
-            <p className="text-sm text-slate-300">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-white">
-                "
-                {notes.find((n) => n.id === deleteConfirmId)?.title ||
-                  "this note"}
-                "
-              </span>
-              ?
-            </p>
-            <div className="flex gap-3 justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmId(null)}
-                className="py-2 px-4 rounded-xl text-xs font-semibold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteNote}
-                className="py-2 px-4 rounded-xl text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-              >
-                Delete Note
-              </button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
