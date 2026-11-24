@@ -39,6 +39,11 @@ export default function AuthPage() {
   }, [resendCooldown]);
 
   const handleGoogleSignIn = async () => {
+    if (!navigator.onLine) {
+      setError("You are currently offline. Connect to the internet to sign in with Google.");
+      return;
+    }
+
     try {
       setGoogleLoading(true);
       setError("");
@@ -64,6 +69,10 @@ export default function AuthPage() {
 
   const handleResendEmail = async () => {
     if (!email || resendCooldown > 0) return;
+    if (!navigator.onLine) {
+      setError("You are currently offline. Connect to the internet to resend the email.");
+      return;
+    }
     setResendLoading(true);
     setResendSuccess("");
     setError("");
@@ -96,6 +105,13 @@ export default function AuthPage() {
 
     if (!isLogin && password.length < 6) {
       setError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setError(
+        `You are currently offline. Connect to the internet to ${isLogin ? "sign in" : "create an account"}.`,
+      );
       return;
     }
 

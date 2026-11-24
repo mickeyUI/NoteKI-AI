@@ -1,4 +1,11 @@
 import { supabase } from "../supabaseClient"; // adjust path if needed
+import {
+  clearOfflineAuth,
+  clearSupabaseLocalSession,
+  hasPersistedSupabaseSession,
+  isInvalidAuthError,
+  isNetworkAuthError,
+} from "./offlineAuth";
 
 // In local dev, use local backend so new backend routes work immediately before deploying
 const rawBaseUrl = import.meta.env.DEV
@@ -6,37 +13,155 @@ const rawBaseUrl = import.meta.env.DEV
   : (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000");
 const BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
-export async function apiRequest(endpoint, options = {}) {
-  // Get the current Supabase session
+function createOfflineError(message = "You are currently offline.") {
+  const err = new Error(message);
+  err.isOfflineError = true;
+  return err;
+}
+
+function createPendingAuthError(
+  message = "Session refresh is pending reconnection.",
+) {
+  const err = new Error(message);
+  err.isAuthRefreshPending = true;
+  return err;
+}
+
+async function signOutLocallyAndNotify() {
+  clearOfflineAuth();
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch (err) {
+    console.warn("Local signOut warning:", err);
+  }
+  clearSupabaseLocalSession();
+  window.dispatchEvent(new Event("auth-failed"));
+}
+
+async function resolveAccessToken() {
+  if (!navigator.onLine) {
+    throw createOfflineError();
+  }
+
   const {
     data: { session },
+    error,
   } = await supabase.auth.getSession();
 
-  const headers = {
-    ...options.headers,
-  };
-
-  // Only set application/json if body is not FormData
-  if (!(options.body instanceof FormData)) {
-    headers["Content-Type"] = headers["Content-Type"] || "application/json";
-  }
-
-  // Send Supabase's access token to FastAPI
   if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
+    return session.access_token;
   }
 
-  const config = {
-    ...options,
-    headers,
+  if (!navigator.onLine) {
+    throw createOfflineError();
+  }
+
+  if (isNetworkAuthError(error)) {
+    throw createPendingAuthError();
+  }
+
+  if (isInvalidAuthError(error)) {
+    await signOutLocallyAndNotify();
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  // Try an explicit refresh if a persisted session still exists (e.g. transient miss)
+  if (hasPersistedSupabaseSession()) {
+    const { data: refreshData, error: refreshError } =
+      await supabase.auth.refreshSession();
+
+    if (refreshData?.session?.access_token) {
+      return refreshData.session.access_token;
+    }
+
+    if (!navigator.onLine || isNetworkAuthError(refreshError)) {
+      throw createPendingAuthError();
+    }
+
+    if (isInvalidAuthError(refreshError) || !hasPersistedSupabaseSession()) {
+      await signOutLocallyAndNotify();
+      throw new Error("Session expired. Please sign in again.");
+    }
+
+    throw createPendingAuthError();
+  }
+
+  await signOutLocallyAndNotify();
+  throw new Error("Authentication required");
+}
+
+/**
+ * Perform an authenticated fetch request, refreshing an expired JWT once on 401
+ * without clearing the user's offline session on network/transient failures.
+ */
+export async function authorizedFetch(endpoint, options = {}) {
+  const accessToken = await resolveAccessToken();
+
+  const buildConfig = (token) => {
+    const headers = {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    };
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = headers["Content-Type"] || "application/json";
+    }
+    return {
+      ...options,
+      headers,
+    };
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, config);
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, buildConfig(accessToken));
+  } catch (err) {
+    if (!navigator.onLine || isNetworkAuthError(err)) {
+      throw createOfflineError();
+    }
+    throw err;
+  }
 
   if (response.status === 401) {
-    await supabase.auth.signOut();
-    window.dispatchEvent(new Event("auth-failed"));
+    if (!navigator.onLine) {
+      throw createOfflineError();
+    }
+
+    const { data: refreshData, error: refreshError } =
+      await supabase.auth.refreshSession();
+
+    if (refreshData?.session?.access_token) {
+      try {
+        response = await fetch(
+          `${BASE_URL}${endpoint}`,
+          buildConfig(refreshData.session.access_token),
+        );
+      } catch (retryErr) {
+        if (!navigator.onLine || isNetworkAuthError(retryErr)) {
+          throw createOfflineError();
+        }
+        throw retryErr;
+      }
+
+      if (response.status === 401 && navigator.onLine) {
+        await signOutLocallyAndNotify();
+      }
+      return response;
+    }
+
+    if (!navigator.onLine || isNetworkAuthError(refreshError)) {
+      throw createPendingAuthError();
+    }
+
+    if (isInvalidAuthError(refreshError) || !hasPersistedSupabaseSession()) {
+      await signOutLocallyAndNotify();
+    }
   }
+
+  return response;
+}
+
+export async function apiRequest(endpoint, options = {}) {
+  const response = await authorizedFetch(endpoint, options);
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

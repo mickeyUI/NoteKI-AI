@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { api } from "./services/api";
+import { api, authorizedFetch } from "./services/api";
 import AuthPage from "./components/AuthPage";
 import CreateNoteModal from "./components/CreateNoteModal";
 import Sidebar from "./components/Sidebar";
@@ -28,9 +28,23 @@ import {
   updateLocalSyncStatus,
   indexedDelete,
 } from "@/services/indexedDB";
+import {
+  buildOfflineSession,
+  clearOfflineAuth,
+  clearSupabaseLocalSession,
+  getOfflineAuth,
+  hasPersistedSupabaseSession,
+  isNetworkAuthError,
+  saveOfflineAuth,
+} from "./services/offlineAuth";
 
 export default function App() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() =>
+    !navigator.onLine ? buildOfflineSession(getOfflineAuth()) : null,
+  );
+  const [authLoading, setAuthLoading] = useState(() =>
+    !navigator.onLine && Boolean(getOfflineAuth()) ? false : true,
+  );
   const [notes, setNotes] = useState([]);
   const [chats, setChats] = useState([]);
   const [folder, setFolder] = useState([]);
@@ -38,6 +52,7 @@ export default function App() {
   const [ungrouped, setUngrouped] = useState([]);
   const lastLoadedUserIdRef = useRef(null);
   const dashboardLoadPromiseRef = useRef(Promise.resolve());
+  const hadOfflineDashboardRef = useRef(false);
 
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -140,9 +155,28 @@ export default function App() {
         ]);
 
         if (notesError) {
-          setNotesFetchError(true);
-          toast.error("Couldn't connect to server: Error fetching notes.");
+          hadOfflineDashboardRef.current = true;
+          try {
+            const cachedNotes = await getAll();
+            const offlineFilteredNotes = cachedNotes.filter(
+              (note) => note?.isDeleted != true,
+            );
+            if (offlineFilteredNotes.length > 0 || notesError.isAuthRefreshPending) {
+              setNotes(offlineFilteredNotes);
+              setNotesFetchError(false);
+            } else {
+              setNotesFetchError(true);
+              toast.error("Couldn't connect to server: Error fetching notes.");
+            }
+          } catch (e) {
+            console.warn("Offline fallback load error:", e);
+            setNotesFetchError(true);
+            if (!notesError.isAuthRefreshPending) {
+              toast.error("Couldn't connect to server: Error fetching notes.");
+            }
+          }
         } else if (Array.isArray(fetchedNotes)) {
+          hadOfflineDashboardRef.current = false;
           // Merge with any local pending notes so offline changes remain visible
           try {
             const offlineNotes = await getAll();
@@ -175,11 +209,14 @@ export default function App() {
         }
 
         if (chatsError) {
-          toast.warning("Couldn't connect to server: Error fetching chats.");
+          if (!chatsError.isOfflineError && !chatsError.isAuthRefreshPending) {
+            toast.warning("Couldn't connect to server: Error fetching chats.");
+          }
         } else if (Array.isArray(fetchedChats)) {
           setChats(fetchedChats);
         }
       } else {
+        hadOfflineDashboardRef.current = true;
         try {
           const fetchedNotes = await getAll();
           const offlineFilteredNotes = fetchedNotes.filter(
@@ -419,22 +456,121 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (initialSession) {
-        setSession(initialSession);
+    let active = true;
+    let fallbackTimer;
+
+    const resolveInitialSession = async () => {
+      const cachedUser = getOfflineAuth();
+
+      if (!navigator.onLine && !cachedUser) {
+        if (active) setAuthLoading(false);
+        return;
       }
-    });
+
+      try {
+        const sessionPromise = supabase.auth.getSession();
+        // Bound offline/lie-fi startup wait since GoTrueClient retries refreshes up to ~30s
+        const result = cachedUser
+          ? await Promise.race([
+              sessionPromise,
+              new Promise((resolve) => {
+                fallbackTimer = setTimeout(
+                  () =>
+                    resolve({
+                      data: { session: null },
+                      error: null,
+                      timedOut: true,
+                    }),
+                  2500,
+                );
+              }),
+            ])
+          : await sessionPromise;
+
+        if (!active) return;
+
+        const initialSession = result?.data?.session || null;
+        const error = result?.error || null;
+
+        if (initialSession) {
+          saveOfflineAuth(initialSession.user);
+          setSession(initialSession);
+        } else if (
+          cachedUser &&
+          (!navigator.onLine ||
+            result?.timedOut ||
+            isNetworkAuthError(error) ||
+            hasPersistedSupabaseSession())
+        ) {
+          setSession((prev) => prev || buildOfflineSession(cachedUser));
+        } else {
+          clearOfflineAuth();
+          setSession(null);
+        }
+      } catch (err) {
+        if (!active) return;
+        if (
+          cachedUser &&
+          (!navigator.onLine ||
+            isNetworkAuthError(err) ||
+            hasPersistedSupabaseSession())
+        ) {
+          setSession((prev) => prev || buildOfflineSession(cachedUser));
+        } else {
+          setSession(null);
+        }
+      } finally {
+        if (fallbackTimer) clearTimeout(fallbackTimer);
+        if (active) setAuthLoading(false);
+      }
+    };
+
+    void resolveInitialSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!active) return;
+
+      if (event === "SIGNED_OUT") {
+        clearOfflineAuth();
+        setSession(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      if (newSession) {
+        saveOfflineAuth(newSession.user);
+        setSession(newSession);
+        setAuthLoading(false);
+        return;
+      }
+
+      // Preserve offline sessions when INITIAL_SESSION emits null during offline startup
+      const cachedUser = getOfflineAuth();
+      if (
+        event === "INITIAL_SESSION" &&
+        cachedUser &&
+        (!navigator.onLine || hasPersistedSupabaseSession())
+      ) {
+        setSession((prev) => prev || buildOfflineSession(cachedUser));
+        setAuthLoading(false);
+        return;
+      }
+
+      clearOfflineAuth();
+      setSession(null);
+      setAuthLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Sync token to localStorage and load data once per authenticated user
+  // Load dashboard data once per authenticated user
   useEffect(() => {
     const userId = session?.user?.id;
     if (userId) {
@@ -444,6 +580,7 @@ export default function App() {
       }
     } else {
       lastLoadedUserIdRef.current = null;
+      hadOfflineDashboardRef.current = false;
       setNotes([]);
       setChats([]);
     }
@@ -454,15 +591,39 @@ export default function App() {
 
     let active = true;
     let syncing = false;
+    let retryTimer = null;
 
     const syncAndRefresh = async () => {
       try {
         if (!active || !navigator.onLine || syncing) return;
 
         syncing = true;
+        const {
+          data: { session: liveSession },
+        } = await supabase.auth.getSession();
+
+        if (!active) return;
+
+        if (!liveSession?.access_token) {
+          // GoTrueClient may still be in its 60s refresh failure cooldown right after reconnect
+          if (hasPersistedSupabaseSession() || getOfflineAuth()) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              if (active) void syncAndRefresh();
+            }, 15000);
+          }
+          return;
+        }
+
+        if (session?.isOfflineSession) {
+          saveOfflineAuth(liveSession.user);
+          setSession(liveSession);
+          return;
+        }
+
         const syncedAny = await syncNotes();
         await dashboardLoadPromiseRef.current;
-        if (syncedAny && active) {
+        if ((syncedAny || hadOfflineDashboardRef.current) && active) {
           dashboardLoadPromiseRef.current = loadDashboardData();
           await dashboardLoadPromiseRef.current;
         }
@@ -478,13 +639,21 @@ export default function App() {
 
     return () => {
       active = false;
+      clearTimeout(retryTimer);
       window.removeEventListener("online", syncAndRefresh);
     };
-  }, [session?.user?.id, loadDashboardData, syncNotes]);
+  }, [
+    session?.user?.id,
+    session?.access_token,
+    session?.isOfflineSession,
+    loadDashboardData,
+    syncNotes,
+  ]);
 
-  // Auth failure listener (to handle 401 redirects from the fetch API client)
+  // Auth failure listener (to handle irreversible 401 redirects from the fetch API client)
   useEffect(() => {
     const handleAuthFailed = () => {
+      clearOfflineAuth();
       setSession(null);
     };
     window.addEventListener("auth-failed", handleAuthFailed);
@@ -535,11 +704,21 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    console.log("clicked");
+    clearOfflineAuth();
     setSession(null);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("couldn't logout:   ", error);
+    if (!navigator.onLine) {
+      clearSupabaseLocalSession();
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) {
+        console.error("couldn't logout:   ", error);
+      }
+    } catch (err) {
+      console.error("couldn't logout:   ", err);
+    } finally {
+      clearSupabaseLocalSession();
     }
   };
 
@@ -811,6 +990,10 @@ export default function App() {
   const handleSearchSubmit = async (e) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
+    if (!navigator.onLine) {
+      toast.error("AI search requires an internet connection.");
+      return;
+    }
 
     const query = inputVal;
     setInputVal("");
@@ -820,12 +1003,8 @@ export default function App() {
     setIsStreaming(true);
 
     try {
-      const response = await fetch(`${api.baseUrl}/question`, {
+      const response = await authorizedFetch("/question", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
         body: JSON.stringify({
           question: query,
           conversation_id: activeHistoryItem?.id || undefined,
@@ -968,6 +1147,19 @@ export default function App() {
     setFolderOpen(true);
     setGroup(group);
   };
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#030712] flex items-center justify-center text-slate-300 select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-400 animate-spin" />
+          <span className="text-xs font-medium text-slate-400">
+            Loading Lore...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   if (!session) {
     return <AuthPage />;
   }
