@@ -102,24 +102,39 @@ function AIAnswerPanel({
   onStartNewChat,
 }) {
   const [messages, setMessages] = useState([]);
-  const handleMessageRetrival = async (uuid) => {
-    if (!uuid) {
-      setMessages([]);
-      return;
-    }
-    try {
-      const data = await api.getMessages(uuid);
-      if (Array.isArray(data)) {
-        setMessages(data);
-      }
-    } catch (err) {
-      console.error("Message retrieval error:", err);
-    }
-  };
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const convoID = convo ? convo.id : "";
   useEffect(() => {
-    handleMessageRetrival(convoID);
+    let active = true;
+
+    // Fetch saved messages for the selected conversation and guard against stale responses
+    const loadConversationMessages = async () => {
+      if (!convoID) {
+        setMessages([]);
+        setLoadingMessages(false);
+        return;
+      }
+      setMessages([]);
+      setLoadingMessages(true);
+      try {
+        const data = await api.getMessages(convoID);
+        if (active && Array.isArray(data)) {
+          setMessages(data);
+        }
+      } catch (err) {
+        console.error("Message retrieval error:", err);
+      } finally {
+        if (active) {
+          setLoadingMessages(false);
+        }
+      }
+    };
+
+    void loadConversationMessages();
+    return () => {
+      active = false;
+    };
   }, [convoID]);
 
   useEffect(() => {
@@ -194,14 +209,35 @@ function AIAnswerPanel({
             Conversation
           </p>
           <div className="text-sm internal leading-relaxed flex flex-col gap-2 justify-center">
-            {messages.map((m, idx) => (
-              <div
-                key={m.id || idx}
-                className={`rounded-2xl w-fit py-2 px-3 ${m.role === "user" ? "self-end max-w-80 bg-[#1a1a1a]" : "self-start max-w-[90%] bg-white/5"}`}
-              >
-                <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{m.content}</Markdown>
+            {loadingMessages ? (
+              <div className="flex flex-col gap-3 py-1" aria-label="Loading conversation">
+                <div className="self-end w-44 rounded-2xl bg-[#1a1a1a] p-3 space-y-1.5 animate-pulse">
+                  <div className="h-3 w-full rounded bg-white/10" />
+                  <div className="h-3 w-2/3 rounded bg-white/10" />
+                </div>
+                <div className="self-start w-[85%] rounded-2xl bg-white/5 border border-white/5 p-3.5 space-y-2 animate-pulse">
+                  <div className="h-3 w-full rounded bg-white/10" />
+                  <div className="h-3 w-11/12 rounded bg-white/10" />
+                  <div className="h-3 w-3/5 rounded bg-white/10" />
+                </div>
+                <div className="self-end w-36 rounded-2xl bg-[#1a1a1a] p-3 animate-pulse">
+                  <div className="h-3 w-full rounded bg-white/10" />
+                </div>
+                <div className="self-start w-[75%] rounded-2xl bg-white/5 border border-white/5 p-3.5 space-y-2 animate-pulse">
+                  <div className="h-3 w-full rounded bg-white/10" />
+                  <div className="h-3 w-2/3 rounded bg-white/10" />
+                </div>
               </div>
-            ))}
+            ) : (
+              messages.map((m, idx) => (
+                <div
+                  key={m.id || idx}
+                  className={`rounded-2xl w-fit py-2 px-3 ${m.role === "user" ? "self-end max-w-80 bg-[#1a1a1a]" : "self-start max-w-[90%] bg-white/5"}`}
+                >
+                  <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{m.content}</Markdown>
+                </div>
+              ))
+            )}
             {isStreaming && (
               <>
                 {searchQuery &&
@@ -215,9 +251,16 @@ function AIAnswerPanel({
                     <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{aiResponse}</Markdown>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2.5 text-slate-500 italic py-8">
-                    <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
-                    <span>AI is synthesizing memory stream...</span>
+                  <div className="self-start w-[85%] rounded-2xl bg-white/5 border border-white/10 p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs text-slate-400 italic">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                      <span>AI is synthesizing memory stream...</span>
+                    </div>
+                    <div className="space-y-2 animate-pulse">
+                      <div className="h-3 w-full rounded bg-white/10" />
+                      <div className="h-3 w-11/12 rounded bg-white/10" />
+                      <div className="h-3 w-3/4 rounded bg-white/10" />
+                    </div>
                   </div>
                 )}
               </>

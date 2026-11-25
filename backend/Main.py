@@ -1,8 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form, Request
+from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form, Request, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from typing import Optional
 import httpx
+import logging
 from sqlalchemy import text
 from Schemas import (
     Register,
@@ -31,6 +34,29 @@ import numpy as np
 import hdbscan
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+from link_preview.config import ALLOWED_ORIGINS, RATE_LIMIT
+from link_preview.schemas import LinkPreviewResponse
+from link_preview.service import get_link_preview
+from link_preview.url_validation import BlockedAddress, InvalidURL
+
+logger = logging.getLogger("second_brain")
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract the real client IP for rate limiting, respecting X-Forwarded-For behind proxies.
+
+    Problem solved: Behind Render's reverse proxy, request.client.host is always the proxy's
+    internal IP. Reading the leftmost X-Forwarded-For entry ensures each user gets their own quota.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+limiter = Limiter(key_func=get_client_ip)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,10 +67,12 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,16 +81,32 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Server error on {request.url.path}: {exc}")
+    # Log the real error server-side but never leak stack traces or internal details to clients.
+    logger.exception("Unhandled server error on %s", request.url.path)
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
+        content={"detail": "Internal server error"},
     )
+
+@app.get("/health")
+def health_check():
+    """Lightweight health endpoint used by Render and uptime probes."""
+    return {"status": "ok"}
+
+
+@app.get("/preview", response_model=LinkPreviewResponse)
+@limiter.limit(RATE_LIMIT)
+async def preview_link(
+    request: Request,
+    url: str = Query(..., description="The http(s) URL to fetch link preview metadata for."),
+):
+    """Fetch and return Open Graph/HTML metadata (or a safe fallback) for a public URL."""
+    try:
+        return await get_link_preview(url)
+    except InvalidURL as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except BlockedAddress as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 #letter for onboarding and stuff
 # @app.post("/Register")

@@ -3,6 +3,8 @@ import { X, Sparkles, Loader2, Edit } from "lucide-react";
 import Markdown from "react-markdown";
 import { getDB } from "../services/indexedDB";
 import { motion, AnimatePresence } from "framer-motion";
+import LinkPreviewCard from "./LinkPreviewCard";
+import { isValidHttpUrl } from "../hooks/useLinkPreview";
 
 export default function ViewNote({
   isOpen,
@@ -132,25 +134,27 @@ export default function ViewNote({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 select-none">
-          {/* Backdrop mask */}
+        <div className="fixed inset-0 z-100 overflow-y-auto overscroll-contain p-3 sm:p-4 md:p-6 select-none">
+          {/* Backdrop mask (fixed so it covers the viewport even when modal content scrolls on mobile) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md"
             onClick={() => setView(false)}
           />
 
-          {/* Modal Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: "spring", stiffness: 350, damping: 26 }}
-            className="relative z-10 lg:min-w-[1000px] glass-panel rounded-3xl p-6 md:p-8 shadow-2xl border border-white/10 max-h-screen overflow-y-auto"
-          >
+          <div className="flex min-h-full items-start lg:items-center justify-center">
+            {/* Modal Card + optional right-side Link Preview card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", stiffness: 350, damping: 26 }}
+              className="relative z-10 my-auto flex flex-col lg:flex-row items-stretch lg:items-start justify-start lg:justify-center gap-3 sm:gap-4 w-full max-w-6xl"
+            >
+            <div className="relative w-full mx-auto lg:mx-0 lg:flex-1 min-w-0 max-w-3xl glass-panel rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/10">
             <button
               onClick={() => setView(false)}
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
@@ -246,7 +250,7 @@ export default function ViewNote({
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="glass-input w-full h-50 md:h-[400px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
+                className="glass-input w-full h-44 sm:h-56 lg:h-[380px] py-3 px-4 text-white placeholder-slate-600 rounded-xl text-sm resize-none"
                 placeholder="Write the core details, ideas, or insights..."
                 required
               />
@@ -311,7 +315,18 @@ export default function ViewNote({
             </button>
           </div>
         </form>
-      </motion.div>
+            </div>
+
+            {noteType === "text" && isValidHttpUrl(sourceUrl) && (
+              <div className="w-full max-w-3xl mx-auto lg:mx-0 lg:w-80 xl:w-96 shrink-0 glass-panel rounded-2xl sm:rounded-3xl p-4 shadow-2xl border border-white/10">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3 px-1">
+                  Source Preview
+                </p>
+                <LinkPreviewCard url={sourceUrl} />
+              </div>
+            )}
+            </motion.div>
+          </div>
     </div>
   )}
 </AnimatePresence>
