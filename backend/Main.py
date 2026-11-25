@@ -280,7 +280,7 @@ def Ask(question: Question, userID = Depends(get_current_user), db = Depends(get
             if chat:
                 db_messages = db.query(Messages).filter(
                     Messages.conversation_id == chat.id
-                ).order_by(Messages.id.asc()).all()
+                ).order_by(Messages.created_at.asc()).all()
                 for m in db_messages[-10:]:
                     role = "assistant" if m.role.lower() in ["ai", "assistant", "system"] else "user"
                     history_messages.append({"role": role, "content": m.content})
@@ -412,7 +412,12 @@ def GetMessages(convoID: ReciveID, userID = Depends(get_current_user), db = Depe
     chat = db.query(Converstions).filter(Converstions.id == convoID.id, Converstions.user_id == userID).first()
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
-    messages = db.query(Messages).filter(Messages.conversation_id == convoID.id).all()
+    messages = (
+        db.query(Messages)
+        .filter(Messages.conversation_id == convoID.id)
+        .order_by(Messages.created_at.asc())
+        .all()
+    )
     return messages or []
                 
 @app.post("/AddChat")

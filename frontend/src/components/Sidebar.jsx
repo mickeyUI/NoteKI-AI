@@ -16,6 +16,7 @@ export default function Sidebar({
   chats = [],
   loadingChats = false,
   activeHistoryItem = null,
+  userEmail = "",
   onViewHistory,
   onSelectShortcut,
   onTogglePin,
@@ -28,6 +29,9 @@ export default function Sidebar({
   isMobile = false,
   onItemClick,
 }) {
+  const displayEmail = userEmail || "User";
+  const initial = (displayEmail.trim().charAt(0) || "U").toUpperCase();
+
   return (
     <aside
       className={`w-full ${
@@ -175,17 +179,20 @@ export default function Sidebar({
 
       {/* Profile and Logout info footer */}
       <div className="p-4 border-t border-white/5 flex items-center justify-between bg-slate-950/40">
-        <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-hidden min-w-0 pr-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-white to-black/10 flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-lg shadow-purple-500/10">
-            U
+            {initial}
           </div>
-          <span className="text-xs font-semibold text-slate-300 truncate">
-            User 0
+          <span
+            className="text-xs font-semibold text-slate-300 truncate"
+            title={displayEmail}
+          >
+            {displayEmail}
           </span>
         </div>
         <button
           onClick={onLogout}
-          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 cursor-pointer"
+          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 cursor-pointer shrink-0"
           title="Log Out"
         >
           <LogOut className="w-4.5 h-4.5" />

@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { Pin, Calendar, Trash2Icon, Mic } from "lucide-react";
 
 export default function NoteCards({
@@ -10,6 +11,44 @@ export default function NoteCards({
   setNoteViewId,
   setNoteViewOpen,
 }) {
+  const [imgSrc, setImgSrc] = useState(note.source_url || null);
+  const blobUrlRef = useRef(null);
+
+  // Resolve a live Blob URL for image card thumbnails when offline or if the remote URL fails.
+  useEffect(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+
+    if (
+      note.note_type === "img" &&
+      note.mediaBlob instanceof Blob &&
+      (!navigator.onLine || !note.source_url || note.source_url.startsWith("blob:"))
+    ) {
+      const freshUrl = URL.createObjectURL(note.mediaBlob);
+      blobUrlRef.current = freshUrl;
+      setImgSrc(freshUrl);
+    } else {
+      setImgSrc(note.source_url || null);
+    }
+
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [note.note_type, note.source_url, note.mediaBlob]);
+
+  const handleImgError = () => {
+    if (note.mediaBlob instanceof Blob && !blobUrlRef.current) {
+      const freshUrl = URL.createObjectURL(note.mediaBlob);
+      blobUrlRef.current = freshUrl;
+      setImgSrc(freshUrl);
+    }
+  };
+
   const toggleVisable = (id) => {
     setNoteViewOpen(true);
     setNoteViewId(id);
@@ -73,8 +112,9 @@ export default function NoteCards({
         {note.note_type === "img" ? (
           <div className=" max-h-[120px] overflow-hidden absolute top-10 -z-1 left-8 rounded-2xl max-w-[240px]">
             <img
-              src={note.source_url || null}
+              src={imgSrc}
               alt={note.title}
+              onError={handleImgError}
               className="rounded-lg h-60 object-cover opacity-100 brightness-30 -z-1 "
             />
           </div>

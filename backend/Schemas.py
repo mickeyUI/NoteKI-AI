@@ -69,6 +69,7 @@ class ReturnMessage(BaseModel):
     conversation_id: UUID
     role: str
     content: str
+    created_at: Optional[datetime] = None
 
 class ReciveID(BaseModel):
     id: UUID

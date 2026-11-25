@@ -91,10 +91,13 @@ export default function Upload({
       return;
     }
 
+    // Pass the selected file/mediaBlob even when online so App can cache it in IndexedDB for offline preview.
     onSubmit({
       title,
       tags: tagArray.toString(),
       source_url: publicURL,
+      file: content,
+      mediaBlob: content,
       group: collection,
     });
 

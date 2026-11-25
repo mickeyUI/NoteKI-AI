@@ -52,5 +52,6 @@ class Messages(Base):
     conversation_id = Column(UUID(as_uuid=True), ForeignKey("converstions.id", ondelete="CASCADE"), nullable=False)
     role = Column(String, nullable=False)
     content = Column(String, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
 Message = Messages

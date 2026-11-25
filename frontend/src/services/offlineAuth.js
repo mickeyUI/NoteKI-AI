@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient";
+import { supabase } from "../supabaseClient.js";
 
 const OFFLINE_AUTH_KEY = "lore_offline_auth";
 

@@ -27,6 +27,7 @@ import {
   updateNote,
   updateLocalSyncStatus,
   indexedDelete,
+  cacheNoteMedia,
 } from "@/services/indexedDB";
 import {
   buildOfflineSession,
@@ -65,8 +66,21 @@ export default function App() {
   const [isFolderOpen, setFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
+  const getPinnedKey = useCallback(
+    (uid) => (uid ? `pinned_notes_${uid}` : "pinned_notes"),
+    [],
+  );
+
   const [pinnedIds, setPinnedIds] = useState(() => {
-    const saved = localStorage.getItem("pinned_notes");
+    const currentUid = session?.user?.id || getOfflineAuth()?.id;
+    if (!currentUid) return [];
+    const key = `pinned_notes_${currentUid}`;
+    const legacy = localStorage.getItem("pinned_notes");
+    if (legacy && !localStorage.getItem(key)) {
+      localStorage.setItem(key, legacy);
+      localStorage.removeItem("pinned_notes");
+    }
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -132,6 +146,7 @@ export default function App() {
   const [notesFetchError, setNotesFetchError] = useState(false);
 
   const loadDashboardData = useCallback(async () => {
+    const currentUserId = session?.user?.id || getOfflineAuth()?.id;
     setLoadingNotes(true);
     setLoadingChats(true);
     setNotesFetchError(false);
@@ -157,11 +172,14 @@ export default function App() {
         if (notesError) {
           hadOfflineDashboardRef.current = true;
           try {
-            const cachedNotes = await getAll();
+            const cachedNotes = await getAll(currentUserId);
             const offlineFilteredNotes = cachedNotes.filter(
               (note) => note?.isDeleted != true,
             );
-            if (offlineFilteredNotes.length > 0 || notesError.isAuthRefreshPending) {
+            if (
+              offlineFilteredNotes.length > 0 ||
+              notesError.isAuthRefreshPending
+            ) {
               setNotes(offlineFilteredNotes);
               setNotesFetchError(false);
             } else {
@@ -179,28 +197,40 @@ export default function App() {
           hadOfflineDashboardRef.current = false;
           // Merge with any local pending notes so offline changes remain visible
           try {
-            const offlineNotes = await getAll();
+            const offlineNotes = await getAll(currentUserId);
+            const offlineMap = new Map(offlineNotes.map((n) => [n.id, n]));
             const pendingNotes = offlineNotes.filter(
-              (n) => n && (n.syncStatus === "pending" || n.syncStatus === "error"),
+              (n) =>
+                n && (n.syncStatus === "pending" || n.syncStatus === "error"),
             );
             const pendingMap = new Map(pendingNotes.map((n) => [n.id, n]));
 
             // Safely cache server notes without overwriting pending items
-            await populate(fetchedNotes);
+            await populate(fetchedNotes, currentUserId);
 
             const serverNoteIds = new Set(fetchedNotes.map((n) => n.id));
             const unmergedPending = pendingNotes.filter(
               (n) => !n.isDeleted && !serverNoteIds.has(n.id),
             );
 
+            // Preserve locally cached mediaBlobs on synced notes in memory and
+            // background-cache any missing remote media files for offline preview.
             const mergedNotes = [
               ...unmergedPending,
               ...fetchedNotes
-                .map((fn) => pendingMap.get(fn.id) || fn)
+                .map((fn) => {
+                  const pending = pendingMap.get(fn.id);
+                  if (pending) return pending;
+                  const cachedBlob = offlineMap.get(fn.id)?.mediaBlob;
+                  return cachedBlob instanceof Blob
+                    ? { ...fn, mediaBlob: cachedBlob }
+                    : fn;
+                })
                 .filter((n) => !n.isDeleted),
             ];
 
             setNotes(mergedNotes);
+            void cacheNoteMedia(fetchedNotes, currentUserId);
           } catch (e) {
             console.warn("Merge error, using fetched notes:", e);
             setNotes(fetchedNotes);
@@ -218,7 +248,7 @@ export default function App() {
       } else {
         hadOfflineDashboardRef.current = true;
         try {
-          const fetchedNotes = await getAll();
+          const fetchedNotes = await getAll(currentUserId);
           const offlineFilteredNotes = fetchedNotes.filter(
             (note) => note?.isDeleted != true,
           );
@@ -237,13 +267,16 @@ export default function App() {
       setLoadingNotes(false);
       setLoadingChats(false);
     }
-  }, []);
+  }, [session?.user?.id]);
 
   const syncNotes = useCallback(async () => {
     if (!navigator.onLine) return false;
-    const offlineNotes = await getAll();
+    const currentUserId = session?.user?.id || getOfflineAuth()?.id;
+    if (!currentUserId) return false;
+    const offlineNotes = await getAll(currentUserId);
     const pendingNotes = offlineNotes.filter(
-      (note) => note && (note.syncStatus === "pending" || note.syncStatus === "error"),
+      (note) =>
+        note && (note.syncStatus === "pending" || note.syncStatus === "error"),
     );
     if (pendingNotes.length === 0) {
       console.log("nothing to sync");
@@ -269,7 +302,7 @@ export default function App() {
             await api.deleteNote(serverNote.id);
           }
           try {
-            await indexedDelete(serverNote.id);
+            await indexedDelete(serverNote.id, currentUserId);
           } catch (e) {
             console.log("local cleanup failed: ", e.message);
           }
@@ -277,7 +310,7 @@ export default function App() {
           continue;
         } catch (e) {
           console.error("couldn't sync delete for:", serverNote.id, e.message);
-          await updateLocalSyncStatus(serverNote.id, "error");
+          await updateLocalSyncStatus(serverNote.id, "error", currentUserId);
           continue;
         }
       }
@@ -308,19 +341,28 @@ export default function App() {
             group: pendingNote.group,
           });
 
-          await updateNote({
+          // Keep mediaBlob in IndexedDB after sync so image previews still work offline.
+          const syncedImgNote = {
             ...pendingNote,
             ...created,
             source_url: publicUrl,
             syncStatus: "synced",
             syncAction: undefined,
-            mediaBlob: undefined,
-          });
+            mediaBlob: mediaBlob,
+          };
+          await updateNote(syncedImgNote, currentUserId);
+          setNotes((prev) =>
+            prev.map((n) => (n.id === pendingNote.id ? syncedImgNote : n)),
+          );
           syncedAny = true;
           continue;
         } catch (e) {
-          console.error("Failed to sync offline image:", pendingNote.id, e.message);
-          await updateLocalSyncStatus(pendingNote.id, "error");
+          console.error(
+            "Failed to sync offline image:",
+            pendingNote.id,
+            e.message,
+          );
+          await updateLocalSyncStatus(pendingNote.id, "error", currentUserId);
           continue;
         }
       }
@@ -339,7 +381,10 @@ export default function App() {
                 transcriptionText = res.text;
               }
             } catch (trErr) {
-              console.warn("Groq transcription error during sync:", trErr.message);
+              console.warn(
+                "Groq transcription error during sync:",
+                trErr.message,
+              );
             }
           }
 
@@ -373,7 +418,9 @@ export default function App() {
           if (
             (!title || title === "Voice Note" || title === "Voice Memory") &&
             transcriptionText &&
-            !transcriptionText.startsWith("Voice recording (transcription pending")
+            !transcriptionText.startsWith(
+              "Voice recording (transcription pending",
+            )
           ) {
             title = `Voice: ${transcriptionText.slice(0, 30).trim()}...`;
           }
@@ -400,15 +447,19 @@ export default function App() {
             mediaBlob: mediaBlob, // Keep mediaBlob in IndexedDB so offline playback remains available!
           };
 
-          await updateNote(syncedNote);
+          await updateNote(syncedNote, currentUserId);
           setNotes((prev) =>
             prev.map((n) => (n.id === pendingNote.id ? syncedNote : n)),
           );
           syncedAny = true;
           continue;
         } catch (e) {
-          console.error("Failed to sync offline voice note:", pendingNote.id, e.message);
-          await updateLocalSyncStatus(pendingNote.id, "error");
+          console.error(
+            "Failed to sync offline voice note:",
+            pendingNote.id,
+            e.message,
+          );
+          await updateLocalSyncStatus(pendingNote.id, "error", currentUserId);
           continue;
         }
       }
@@ -426,17 +477,24 @@ export default function App() {
             group: pendingNote.group,
           });
 
-          await updateNote({
-            ...pendingNote,
-            ...created,
-            syncStatus: "synced",
-            syncAction: undefined,
-          });
+          await updateNote(
+            {
+              ...pendingNote,
+              ...created,
+              syncStatus: "synced",
+              syncAction: undefined,
+            },
+            currentUserId,
+          );
           syncedAny = true;
           continue;
         } catch (e) {
-          console.error("Failed to sync offline text note:", pendingNote.id, e.message);
-          await updateLocalSyncStatus(pendingNote.id, "error");
+          console.error(
+            "Failed to sync offline text note:",
+            pendingNote.id,
+            e.message,
+          );
+          await updateLocalSyncStatus(pendingNote.id, "error", currentUserId);
           continue;
         }
       }
@@ -444,16 +502,16 @@ export default function App() {
       // 5. Offline Edited Existing Note
       try {
         await api.editNote(serverNote);
-        await updateLocalSyncStatus(serverNote.id, "synced");
+        await updateLocalSyncStatus(serverNote.id, "synced", currentUserId);
         syncedAny = true;
       } catch (e) {
         console.error("couldn't sync edit for:", serverNote.id, e.message);
-        await updateLocalSyncStatus(serverNote.id, "error");
+        await updateLocalSyncStatus(serverNote.id, "error", currentUserId);
       }
     }
     if (syncedAny) toast.success("Offline changes synced!");
     return syncedAny;
-  }, []);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     let active = true;
@@ -574,8 +632,19 @@ export default function App() {
   useEffect(() => {
     const userId = session?.user?.id;
     if (userId) {
+      const key = getPinnedKey(userId);
+      const legacy = localStorage.getItem("pinned_notes");
+      if (legacy && !localStorage.getItem(key)) {
+        localStorage.setItem(key, legacy);
+        localStorage.removeItem("pinned_notes");
+      }
+      const saved = localStorage.getItem(key);
+      setPinnedIds(saved ? JSON.parse(saved) : []);
+
       if (lastLoadedUserIdRef.current !== userId) {
         lastLoadedUserIdRef.current = userId;
+        setNotes([]);
+        setChats([]);
         dashboardLoadPromiseRef.current = loadDashboardData();
       }
     } else {
@@ -583,8 +652,9 @@ export default function App() {
       hadOfflineDashboardRef.current = false;
       setNotes([]);
       setChats([]);
+      setPinnedIds([]);
     }
-  }, [session?.user?.id, loadDashboardData]);
+  }, [session?.user?.id, loadDashboardData, getPinnedKey]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -706,6 +776,9 @@ export default function App() {
   const handleLogout = async () => {
     clearOfflineAuth();
     setSession(null);
+    setNotes([]);
+    setChats([]);
+    setPinnedIds([]);
     if (!navigator.onLine) {
       clearSupabaseLocalSession();
       return;
@@ -723,6 +796,7 @@ export default function App() {
   };
 
   const handleCreateNote = async (noteData) => {
+    const currentUserId = session?.user?.id || getOfflineAuth()?.id;
     if (!navigator.onLine || noteData.isOffline) {
       const isVoice = noteData.note_type === "voice";
       const audioBlob = noteData.audioFile || noteData.mediaBlob || null;
@@ -733,6 +807,7 @@ export default function App() {
 
       const offlineNote = {
         id: crypto.randomUUID(),
+        user_id: currentUserId,
         title: noteData.title || (isVoice ? "Voice Note" : "New Note"),
         content:
           noteData.content ||
@@ -753,7 +828,7 @@ export default function App() {
       };
 
       try {
-        await updateNote(offlineNote);
+        await updateNote(offlineNote, currentUserId);
         setNotes((prev) => [offlineNote, ...prev]);
         toast.success(
           isVoice ? "Voice note saved offline" : "Note saved offline",
@@ -777,18 +852,24 @@ export default function App() {
       if (newNote && newNote.id) {
         const fullNote = {
           ...newNote,
+          user_id: currentUserId,
           mediaBlob: audioBlob,
           syncStatus: "synced",
           isDeleted: false,
         };
         setNotes((prev) => [fullNote, ...prev]);
         try {
-          await updateNote(fullNote);
+          await updateNote(fullNote, currentUserId);
         } catch (dbErr) {
           console.warn("IndexedDB cache failed:", dbErr);
         }
       } else {
-        await api.getNotes().then(setNotes);
+        await api.getNotes().then((fetched) => {
+          setNotes(fetched);
+          if (Array.isArray(fetched)) {
+            void populate(fetched, currentUserId);
+          }
+        });
       }
       toast.success("Note Created");
     } catch (err) {
@@ -802,10 +883,12 @@ export default function App() {
   };
 
   const handleUploading = async (noteData) => {
+    const currentUserId = session?.user?.id || getOfflineAuth()?.id;
     if (!navigator.onLine || noteData.isOffline) {
       try {
         const offlineNote = {
           id: crypto.randomUUID(),
+          user_id: currentUserId,
           title: noteData.title || "Image Note",
           content: "",
           tags: noteData.tags || "",
@@ -819,7 +902,7 @@ export default function App() {
           syncStatus: "pending",
           syncAction: "create_img",
         };
-        await updateNote(offlineNote);
+        await updateNote(offlineNote, currentUserId);
         setNotes((prev) => [offlineNote, ...prev]);
         toast.success("Image saved offline");
       } catch (dbErr) {
@@ -834,16 +917,30 @@ export default function App() {
 
     try {
       setUploading(true);
+      const imageBlob = noteData.file || noteData.mediaBlob || null;
       const newUpload = await api.uploadImg(noteData);
       if (newUpload && newUpload.id) {
-        setNotes((prev) => [newUpload, ...prev]);
+        // Persist the uploaded image blob in IndexedDB so it remains previewable offline.
+        const fullUpload = {
+          ...newUpload,
+          user_id: currentUserId,
+          mediaBlob: imageBlob,
+          syncStatus: "synced",
+          isDeleted: false,
+        };
+        setNotes((prev) => [fullUpload, ...prev]);
         try {
-          await updateNote({ ...newUpload, syncStatus: "synced", isDeleted: false });
+          await updateNote(fullUpload, currentUserId);
         } catch (dbErr) {
           console.warn("IndexedDB cache failed:", dbErr);
         }
       } else {
-        await api.getNotes().then(setNotes);
+        await api.getNotes().then((fetched) => {
+          setNotes(fetched);
+          if (Array.isArray(fetched)) {
+            void populate(fetched, currentUserId);
+          }
+        });
       }
       toast.success("Upload Complete");
     } catch (err) {
@@ -856,6 +953,7 @@ export default function App() {
   };
 
   const handleEditNote = async (noteData) => {
+    const currentUserId = session?.user?.id || getOfflineAuth()?.id;
     if (!navigator.onLine) {
       try {
         setViewLoading(true);
@@ -864,11 +962,15 @@ export default function App() {
           console.error("note couldn't be found");
           return;
         }
-        const result = await updateNote({
-          ...toBeModified,
-          ...noteData,
-          syncStatus: "pending",
-        });
+        const result = await updateNote(
+          {
+            ...toBeModified,
+            ...noteData,
+            user_id: toBeModified?.user_id || currentUserId,
+            syncStatus: "pending",
+          },
+          currentUserId,
+        );
         const newNotes = notes.filter((note) => note.id != noteData.id);
         setNotes([{ ...toBeModified, ...noteData }, ...newNotes]);
         console.log(result);
@@ -886,8 +988,21 @@ export default function App() {
       if (newNote && newNote.id) {
         const modified = notes.filter((note) => note.id != newNote.id);
         setNotes([newNote, ...modified]);
+        try {
+          await updateNote(
+            { ...newNote, user_id: currentUserId, syncStatus: "synced" },
+            currentUserId,
+          );
+        } catch (dbErr) {
+          console.warn("IndexedDB cache failed:", dbErr);
+        }
       } else {
-        await api.getNotes().then(setNotes);
+        await api.getNotes().then((fetched) => {
+          setNotes(fetched);
+          if (Array.isArray(fetched)) {
+            void populate(fetched, currentUserId);
+          }
+        });
       }
       toast.success("Edit Complete");
     } catch (err) {
@@ -904,6 +1019,7 @@ export default function App() {
   };
 
   const confirmDeleteNote = async () => {
+    const currentUserId = session?.user?.id || getOfflineAuth()?.id;
     const noteID = deleteConfirmId;
     setDeleteConfirmId(null);
     const targetNote = notes.find((note) => note.id == noteID);
@@ -912,18 +1028,22 @@ export default function App() {
       try {
         if (targetNote?.syncAction?.startsWith("create")) {
           // Note created offline and never synced to backend: simply delete locally
-          await indexedDelete(noteID);
+          await indexedDelete(noteID, currentUserId);
           setNotes((prev) => prev.filter((note) => note.id !== noteID));
           setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
           toast.success("Note Deleted");
           return;
         }
 
-        await updateNote({
-          ...targetNote,
-          isDeleted: true,
-          syncStatus: "pending",
-        });
+        await updateNote(
+          {
+            ...targetNote,
+            user_id: targetNote?.user_id || currentUserId,
+            isDeleted: true,
+            syncStatus: "pending",
+          },
+          currentUserId,
+        );
         const newNotes = notes.filter((note) => note.id != noteID);
         setNotes(newNotes);
         setUngrouped((prev) => prev.filter((note) => note.id !== noteID));
@@ -945,7 +1065,7 @@ export default function App() {
       }
 
       try {
-        await indexedDelete(noteID);
+        await indexedDelete(noteID, currentUserId);
       } catch (e) {
         console.log("local cleanup failed: ", e.message);
       }
@@ -970,11 +1090,17 @@ export default function App() {
   };
 
   const togglePin = (noteId) => {
+    const currentUid = session?.user?.id || getOfflineAuth()?.id;
     const nextPinned = pinnedIds.includes(noteId)
       ? pinnedIds.filter((id) => id !== noteId)
       : [...pinnedIds, noteId];
     setPinnedIds(nextPinned);
-    localStorage.setItem("pinned_notes", JSON.stringify(nextPinned));
+    if (currentUid) {
+      localStorage.setItem(
+        getPinnedKey(currentUid),
+        JSON.stringify(nextPinned),
+      );
+    }
   };
 
   const handleStartNewChat = useCallback(() => {
@@ -1038,24 +1164,29 @@ export default function App() {
 
       try {
         let chatResult = activeHistoryItem;
-        if (!chatResult || !chatResult.id) {
+        const isNewChat = !chatResult || !chatResult.id;
+        if (isNewChat) {
           chatResult = await api.addChat(query);
-          if (chatResult && chatResult.id) {
-            setActiveHistoryItem(chatResult);
-          }
         }
         const chatId = chatResult?.id || "";
 
-        const [fetchedUserQuery, fetchedAiRes] = await Promise.all([
-          api.addMessage(chatId, query, "user").catch((err) => {
+        // Save user message before AI message so DB timestamps preserve conversation order
+        const fetchedUserQuery = await api
+          .addMessage(chatId, query, "user")
+          .catch((err) => {
             console.error("User message save error", err);
             return [];
-          }),
-          api.addMessage(chatId, fullResponseText, "AI").catch((err) => {
+          });
+        const fetchedAiRes = await api
+          .addMessage(chatId, fullResponseText, "AI")
+          .catch((err) => {
             console.error("AI message save error", err);
             return [];
-          }),
-        ]);
+          });
+
+        if (isNewChat && chatResult && chatResult.id) {
+          setActiveHistoryItem(chatResult);
+        }
         setUserQuery(fetchedUserQuery || []);
         setAiRes(fetchedAiRes || []);
         await api.getChats().then(setChats);
@@ -1200,6 +1331,7 @@ export default function App() {
                   chats={chats}
                   loadingChats={loadingChats}
                   activeHistoryItem={activeHistoryItem}
+                  userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
                   onViewHistory={handleViewHistoryChat}
                   onSelectShortcut={(title) => setInputVal(title)}
                   onTogglePin={togglePin}
@@ -1233,6 +1365,7 @@ export default function App() {
                   chats={chats}
                   loadingChats={loadingChats}
                   activeHistoryItem={activeHistoryItem}
+                  userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
                   onViewHistory={handleViewHistoryChat}
                   onSelectShortcut={(title) => setInputVal(title)}
                   onTogglePin={togglePin}
@@ -1334,6 +1467,7 @@ export default function App() {
         notes={notes}
         onSubmit={handleEditNote}
         folders={folder}
+        userId={session?.user?.id || getOfflineAuth()?.id}
       />
       <Upload
         isOpen={isUploadOpen}

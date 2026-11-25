@@ -11,6 +11,7 @@ export default function ViewNote({
   loading,
   noteid,
   notes,
+  userId,
 }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
@@ -20,6 +21,7 @@ export default function ViewNote({
   const [creation, setCreated] = useState("");
   const [noteType, setNoteType] = useState("");
   const [audioError, setAudioError] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const audioBlobUrlRef = useRef(null);
 
   const selectedNote = notes.find((note) => note.id == noteid);
@@ -33,6 +35,7 @@ export default function ViewNote({
     setCreated(selectedNote.created_at || "");
     setNoteType(selectedNote.note_type || "");
     setAudioError(false);
+    setImageError(false);
 
     // Clean up previously created temporary blob URL
     if (audioBlobUrlRef.current) {
@@ -52,9 +55,13 @@ export default function ViewNote({
 
     setSourceUrl(resolvedSource);
 
-    // 2. If it's a voice note without an active mediaBlob in memory, check IndexedDB cache
-    if (selectedNote.note_type === "voice" && !(selectedNote.mediaBlob instanceof Blob)) {
-      getDB()
+    // 2. For both voice and image notes without an active mediaBlob in memory,
+    // check IndexedDB cache so offline previews work even after state refreshes.
+    if (
+      (selectedNote.note_type === "voice" || selectedNote.note_type === "img") &&
+      !(selectedNote.mediaBlob instanceof Blob)
+    ) {
+      getDB(userId || selectedNote?.user_id)
         .then((db) => {
           const tx = db.transaction("notes", "readonly");
           const req = tx.objectStore("notes").get(selectedNote.id);
@@ -67,10 +74,14 @@ export default function ViewNote({
               const freshBlob = URL.createObjectURL(stored.mediaBlob);
               audioBlobUrlRef.current = freshBlob;
               setSourceUrl(freshBlob);
+              setAudioError(false);
+              setImageError(false);
             }
           };
         })
-        .catch((err) => console.warn("Failed to check IndexedDB for voice blob:", err));
+        .catch((err) =>
+          console.warn("Failed to check IndexedDB for media blob:", err),
+        );
     }
 
     return () => {
@@ -79,7 +90,7 @@ export default function ViewNote({
         audioBlobUrlRef.current = null;
       }
     };
-  }, [selectedNote]);
+  }, [selectedNote, userId]);
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -99,12 +110,22 @@ export default function ViewNote({
       .map((t) => t.replace(/^#+/, "").trim())
       .filter(Boolean);
 
+    // Avoid overwriting a persisted remote source_url with a temporary local blob: URL when saving edits.
+    const originalSource = selectedNote?.source_url || selectedNote?.sourceUrl || "";
+    const persistedSourceUrl =
+      noteType !== "text" &&
+      sourceUrl.startsWith("blob:") &&
+      originalSource &&
+      !originalSource.startsWith("blob:")
+        ? originalSource
+        : sourceUrl;
+
     onSubmit({
       id,
       title,
       content,
       tags: tagArray.toString(),
-      source_url: sourceUrl,
+      source_url: persistedSourceUrl,
     });
   };
 
@@ -207,12 +228,19 @@ export default function ViewNote({
                 />
               </div>
             ) : noteType === "img" ? (
-              <div className="flex justify-center items-center">
-                <img
-                  src={sourceUrl}
-                  alt="img"
-                  className="max-h-[300px] rounded-2xl"
-                />
+              <div className="flex flex-col justify-center items-center gap-2">
+                {sourceUrl && !imageError ? (
+                  <img
+                    src={sourceUrl}
+                    alt={title || "img"}
+                    className="max-h-[300px] rounded-2xl"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <p className="text-xs text-slate-400 py-8">
+                    Image preview is unavailable offline.
+                  </p>
+                )}
               </div>
             ) : (
               <textarea
