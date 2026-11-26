@@ -83,7 +83,7 @@ class EditNote(BaseModel):
     content: Optional[str] = ""
     tags: Optional[str] = ""
     source_url: Optional[str] = None
-    # group: str
+    group: Optional[str] = None
 
 class GroupingCustom(BaseModel):
     groupName: str

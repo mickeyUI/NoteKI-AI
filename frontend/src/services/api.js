@@ -232,7 +232,7 @@ export const api = {
         content: note.content,
         tags: note.tags ?? "",
         source_url: note.source_url ?? note.sourceUrl ?? "",
-        // group: note.group,
+        ...(note.group !== undefined ? { group: note.group } : {}),
       }),
     }),
 

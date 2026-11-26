@@ -1298,90 +1298,100 @@ export default function App() {
   return (
     <div className="flex  h-screen text-slate-100 overflow-hidden font-sans select-none">
       <Toaster position="top-center" theme="light" />
-      {/* Sidebar - Floating Drawer on Mobile, Side Panel on Desktop */}
+      {/* Sidebar - Floating Drawer (or collapsed icon rail) on Mobile, Collapsible Rail/Panel on Desktop */}
       {isMobile ? (
-        <AnimatePresence>
-          {!pullSidebar && (
-            <motion.div
-              className="fixed inset-0 z-50 flex"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 1 }}
-              transition={{ duration: 0.25 }}
-            >
-              {/* Backdrop blur overlay */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => setPullSidebar(true)}
-                className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm cursor-pointer"
+        <>
+          {pullSidebar && (
+            <div className="w-14 shrink-0 h-full relative z-30">
+              <Sidebar
+                userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
+                handleGrouping={handleGrouping}
+                Grouping={grouping}
+                pullButton={setPullSidebar}
+                isMobile={true}
+                collapsed={true}
               />
-
-              {/* Floating Slide-over Drawer */}
+            </div>
+          )}
+          <AnimatePresence>
+            {!pullSidebar && (
               <motion.div
-                initial={{ x: "-100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "-100%" }}
-                transition={{ type: "spring", stiffness: 350, damping: 32 }}
-                className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl"
+                className="fixed inset-0 z-50 flex"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 1 }}
+                transition={{ duration: 0.25 }}
               >
-                <Sidebar
-                  pinnedNotes={pinnedNotes}
-                  chats={chats}
-                  loadingChats={loadingChats}
-                  activeHistoryItem={activeHistoryItem}
-                  userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
-                  onViewHistory={handleViewHistoryChat}
-                  onSelectShortcut={(title) => setInputVal(title)}
-                  onTogglePin={togglePin}
-                  onLogout={handleLogout}
-                  onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
-                  toggleDelete={handleDeleteChat}
-                  handleGrouping={handleGrouping}
-                  Grouping={grouping}
-                  pullButton={setPullSidebar}
-                  onStartNewChat={handleStartNewChat}
-                  isMobile={true}
-                  onItemClick={() => setPullSidebar(true)}
+                {/* Backdrop blur overlay */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setPullSidebar(true)}
+                  className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm cursor-pointer"
                 />
+
+                {/* Floating Slide-over Drawer */}
+                <motion.div
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                  className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl"
+                >
+                  <Sidebar
+                    pinnedNotes={pinnedNotes}
+                    chats={chats}
+                    loadingChats={loadingChats}
+                    activeHistoryItem={activeHistoryItem}
+                    userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
+                    onViewHistory={handleViewHistoryChat}
+                    onSelectShortcut={(title) => setInputVal(title)}
+                    onTogglePin={togglePin}
+                    onLogout={handleLogout}
+                    onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+                    toggleDelete={handleDeleteChat}
+                    handleGrouping={handleGrouping}
+                    Grouping={grouping}
+                    pullButton={setPullSidebar}
+                    onStartNewChat={handleStartNewChat}
+                    isMobile={true}
+                    onItemClick={() => setPullSidebar(true)}
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </>
       ) : (
-        <AnimatePresence initial={false}>
-          {!pullSidebar && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 256, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-              className="overflow-hidden shrink-0 h-full relative z-30"
-            >
-              <div className="w-64 h-full shrink-0">
-                <Sidebar
-                  pinnedNotes={pinnedNotes}
-                  chats={chats}
-                  loadingChats={loadingChats}
-                  activeHistoryItem={activeHistoryItem}
-                  userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
-                  onViewHistory={handleViewHistoryChat}
-                  onSelectShortcut={(title) => setInputVal(title)}
-                  onTogglePin={togglePin}
-                  onLogout={handleLogout}
-                  onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
-                  toggleDelete={handleDeleteChat}
-                  handleGrouping={handleGrouping}
-                  Grouping={grouping}
-                  pullButton={setPullSidebar}
-                  onStartNewChat={handleStartNewChat}
-                  isMobile={false}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          initial={false}
+          animate={{ width: pullSidebar ? 60 : 256 }}
+          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+          className="overflow-hidden shrink-0 h-full relative z-30"
+        >
+          <div className={pullSidebar ? "w-[60px] h-full shrink-0" : "w-64 h-full shrink-0"}>
+            <Sidebar
+              pinnedNotes={pinnedNotes}
+              chats={chats}
+              loadingChats={loadingChats}
+              activeHistoryItem={activeHistoryItem}
+              userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
+              onViewHistory={handleViewHistoryChat}
+              onSelectShortcut={(title) => setInputVal(title)}
+              onTogglePin={togglePin}
+              onLogout={handleLogout}
+              onOpenCreateNoteModal={() => setIsNoteModalOpen(true)}
+              toggleDelete={handleDeleteChat}
+              handleGrouping={handleGrouping}
+              Grouping={grouping}
+              pullButton={setPullSidebar}
+              onStartNewChat={handleStartNewChat}
+              isMobile={false}
+              collapsed={pullSidebar}
+            />
+          </div>
+        </motion.div>
       )}
 
       {/* Main Content Area */}
@@ -1418,8 +1428,6 @@ export default function App() {
               unGroupNotes={handleUngrouping}
               grouping={grouping}
               ungroupingFolder={ungroupingFolder}
-              isShowing={pullSidebar}
-              setPullSidebar={setPullSidebar}
               setCreateModel={setCreateGroupModalOpen}
               ungroupedNotes={ungrouped}
             />
@@ -1466,6 +1474,7 @@ export default function App() {
         setid={setNoteViewId}
         notes={notes}
         onSubmit={handleEditNote}
+        onDelete={handleDeleteNote}
         folders={folder}
         userId={session?.user?.id || getOfflineAuth()?.id}
       />

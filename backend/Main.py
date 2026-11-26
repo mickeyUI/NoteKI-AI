@@ -280,6 +280,8 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     note.content = newNote.content
     note.tags = newNote.tags
     note.source_url = newNote.source_url
+    if newNote.group is not None:
+        note.group = newNote.group
     toEmbed = newNote.content
     if newNote.title: 
         toEmbed = f'Title: {newNote.title}, content: {newNote.content}'

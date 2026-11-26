@@ -6,11 +6,17 @@ import {
   LogOut,
   RefreshCw,
   FolderIcon,
-  ArrowLeftIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Loader2,
   Plus,
 } from "lucide-react";
 
+/**
+ * Application sidebar supporting both full expanded mode (pinned hubs, chat
+ * history, user footer) and a compact collapsed icon rail (expand, group,
+ * history, and bottom user avatar).
+ */
 export default function Sidebar({
   pinnedNotes = [],
   chats = [],
@@ -27,10 +33,61 @@ export default function Sidebar({
   pullButton,
   onStartNewChat,
   isMobile = false,
+  collapsed = false,
   onItemClick,
 }) {
   const displayEmail = userEmail || "User";
   const initial = (displayEmail.trim().charAt(0) || "U").toUpperCase();
+
+  if (collapsed) {
+    return (
+      <aside className="w-full h-full bg-[#121212] border-r border-white/5 flex flex-col items-center justify-between py-4 shrink-0 relative z-30 select-none shadow-2xl">
+        {/* Top quick-action icon rail */}
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={() => pullButton(false)}
+            className="btn-style cursor-pointer"
+            title="Expand Sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleGrouping()}
+            className="btn-style cursor-pointer"
+            title="Group Notes"
+          >
+            {Grouping ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FolderIcon className="w-4 h-4" fill="currentColor" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => pullButton(false)}
+            className="btn-style cursor-pointer"
+            title="History"
+          >
+            <History className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Bottom user icon */}
+        <button
+          type="button"
+          onClick={() => pullButton(false)}
+          className="w-8 h-8 rounded-full bg-gradient-to-tr from-white to-black/10 flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-lg shadow-purple-500/10 cursor-pointer"
+          title={displayEmail}
+        >
+          {initial}
+        </button>
+      </aside>
+    );
+  }
 
   return (
     <aside
@@ -60,7 +117,7 @@ export default function Sidebar({
             className=" btn-style cursor-pointer"
             title="Collapse Sidebar"
           >
-            <ArrowLeftIcon className="w-4 h-4" />
+            <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
       </div>

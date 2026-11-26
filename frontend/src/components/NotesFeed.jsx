@@ -6,7 +6,6 @@ import {
   SearchIcon,
   UploadIcon,
   X,
-  Menu,
   Plus,
   MicAudioLines,
   AlertTriangle,
@@ -53,8 +52,6 @@ export default function NotesFeed({
   unGroupNotes,
   _grouping,
   ungroupingFolder = null,
-  isShowing,
-  setPullSidebar,
   setCreateModel,
   // ungroupedNotes,
 }) {
@@ -62,6 +59,7 @@ export default function NotesFeed({
   const [pgSearchedNotes, setPgSearchedNotes] = useState([]);
   const [pging, setPging] = useState(false);
   const [search, setSearch] = useState("");
+  const [noteTypeFilter, setNoteTypeFilter] = useState("all");
   const [folderWidth, setFolderWidth] = useState(() => {
     if (typeof window === "undefined") return 220;
     if (window.innerWidth < 640) return 160;
@@ -69,6 +67,19 @@ export default function NotesFeed({
     return 220;
   });
   const lastFolderTapRef = useRef({ group: null, time: 0 });
+  const searchInputRef = useRef(null);
+
+  // Focus the feed search input when the user presses Cmd/Ctrl+K.
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Keep GlassFolder card width responsive across phone, tablet, and desktop breakpoints.
   useEffect(() => {
@@ -113,6 +124,12 @@ export default function NotesFeed({
 
   const notesToDisplay = search ? notes : [...pinnedNotes, ...standardNotes];
   const filteredNotes = notesToDisplay.filter((note) => {
+    // Apply note-type tab filter (All / Voice / Images / Text).
+    if (noteTypeFilter !== "all") {
+      const nType = note?.note_type || "text";
+      if (nType !== noteTypeFilter) return false;
+    }
+
     if (!search.trim()) {
       return true;
     }
@@ -162,14 +179,6 @@ export default function NotesFeed({
       {/* Upper title menu */}
       <div className="flex flex-col gap-5 lg:flex-row md:justify-between mb-8">
         <div className="flex gap-2">
-          {isShowing && (
-            <button
-              onClick={() => setPullSidebar(false)}
-              className=" flex justify-center items-center btn-style cursor-pointer"
-            >
-              <Menu className="w-6 h-6 " />
-            </button>
-          )}
           <div>
             <h1 className="text-2xl font-bold tracking-tight internal mb-1">
               Lore Knowledge Base
@@ -179,28 +188,38 @@ export default function NotesFeed({
             </p>
           </div>
         </div>
-        <div className="flex gap-2 justify-start items-center">
-          <div className="flex relative">
+        <div className="flex gap-2 justify-start items-center flex-wrap sm:flex-nowrap">
+          <div className="relative flex items-center flex-1 sm:flex-none sm:w-72 md:w-80 h-10 rounded-full bg-[#242424] border border-white/10 focus-within:border-white/25 px-3.5 gap-2.5 transition-colors">
+            <SearchIcon className="w-4 h-4 text-slate-400 shrink-0 pointer-events-none" />
             <input
+              ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runPgSearch();
+                }
+              }}
               type="text"
               placeholder="Search notes or #tag..."
-              className="w-full h-10 focus:outline-none bg-1 rounded-2xl p-1 pl-3 focus:pr-20 text-[15px] border-white/10 transition-all ease-in-out placeholder:text-slate-500 placeholder:text-xs"
+              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-slate-400 focus:outline-none"
             />
-            {search && (
+            {search ? (
               <button
+                type="button"
                 onClick={cancelSearch}
-                className="absolute right-0 flex justify-center items-center  p-2 "
+                className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                title="Clear search"
               >
-                <X className="h-5 w-5 opacity-25 hover:opacity-70 border-2 rounded-2xl" />
+                <X className="w-3.5 h-3.5" />
               </button>
+            ) : (
+              <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-[#323232] border border-white/10 text-[11px] font-medium text-slate-300 shrink-0 select-none">
+                ⌘K
+              </kbd>
             )}
           </div>
-
-          <button onClick={runPgSearch} className="btn-style h-10">
-            <SearchIcon className="w-5 h-5 " />
-          </button>
           <button
             onClick={() => {
               openUpload(true);
@@ -230,20 +249,18 @@ export default function NotesFeed({
           </button>
         </div>
       </div>
-      {searchDisplayActive && (
-        <SearchDisplayPopup
-          isOpen={searchDisplayActive}
-          onClose={cancelSearch}
-          queriedNotes={pgSearchedNotes}
-          loading={pging}
-          onTogglePin={onTogglePin}
-          formatDate={formatDate}
-          handleDeleteNote={handleDeleteNote}
-          onSelectTag={handleSelectTag}
-          setNoteViewId={setNoteViewId}
-          setNoteViewOpen={setNoteViewOpen}
-        />
-      )}
+      <SearchDisplayPopup
+        isOpen={searchDisplayActive}
+        onClose={cancelSearch}
+        queriedNotes={pgSearchedNotes}
+        loading={pging}
+        onTogglePin={onTogglePin}
+        formatDate={formatDate}
+        handleDeleteNote={handleDeleteNote}
+        onSelectTag={handleSelectTag}
+        setNoteViewId={setNoteViewId}
+        setNoteViewOpen={setNoteViewOpen}
+      />
       {loadingNotes ? (
         <div className="flex-1 flex flex-col gap-10 animate-pulse select-none">
           {/* Skeleton Collections (matches horizontal GlassFolder + New Collection row) */}
@@ -434,9 +451,42 @@ export default function NotesFeed({
           </div>
 
           {/*  Notes grid / masonry layout */}
-          <div className="gap-6 flex flex-col">
-            <div className="flex items-center justify-between pl-2 pr-2">
-              <h1 className="internal text-2xl">Notes</h1>
+          <div className="gap-5 flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-3 pl-2 pr-2">
+              <div className="flex flex-wrap items-center gap-4">
+                <h1 className="internal text-2xl">Notes</h1>
+                {/* Note type filter tabs */}
+                <div
+                  role="tablist"
+                  aria-label="Filter notes by type"
+                  className="inline-flex items-center gap-1 p-1 rounded-xl glass-panel border border-white/10"
+                >
+                  {[
+                    { id: "all", label: "All" },
+                    { id: "voice", label: "Voice" },
+                    { id: "img", label: "Images" },
+                    { id: "text", label: "Text" },
+                  ].map((tab) => {
+                    const active = noteTypeFilter === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setNoteTypeFilter(tab.id)}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                          active
+                            ? "bg-white/15 text-white shadow-sm"
+                            : "text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               {search && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">Filtering:</span>
