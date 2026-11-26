@@ -7,7 +7,7 @@ export default function ChatInput({
   onSubmit,
 }) {
   return (
-    <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent pointer-events-none z-20 flex items-center justify-center">
+    <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent pointer-events-none z-[45] flex items-center justify-center">
       <form
         onSubmit={onSubmit}
         className="w-[calc(100%-3rem)] max-w-2xl pointer-events-auto relative z-30"

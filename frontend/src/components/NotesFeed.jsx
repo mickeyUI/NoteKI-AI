@@ -1,23 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   SquarePen,
   RefreshCw,
   FileText,
   SearchIcon,
   UploadIcon,
-  UngroupIcon,
   X,
   Menu,
   Plus,
-  Loader2,
   MicAudioLines,
   AlertTriangle,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
+import GlassFolder from "./glassFolderCards";
 import SearchDisplayPopup from "./SearchDisplayPopup";
 import { AnimatePresence, motion } from "framer-motion";
 import { api } from "../services/api";
 import { toast } from "sonner";
+
+// Minimalistic monochrome charcoal art matching the app's #212121 + smoked glass theme.
+const MINIMAL_FOLDER_ART = {
+  style: "streak",
+  colors: ["#121212", "#1b1b1b", "#262626", "#323232", "#1c1c1c", "#101010"],
+  scale: 0.55,
+  warp: 0.85,
+  angle: -0.5,
+  gloss: 0.12,
+  veins: 0,
+};
 
 export default function NotesFeed({
   loadingNotes = false,
@@ -32,7 +42,7 @@ export default function NotesFeed({
   onSelectTag,
   selectedTag = "",
   onOpenCreateNoteModal,
-  isSearchActive = false,
+  _isSearchActive = false,
   formatDate,
   handleDeleteNote,
   setNoteViewId,
@@ -52,6 +62,42 @@ export default function NotesFeed({
   const [pgSearchedNotes, setPgSearchedNotes] = useState([]);
   const [pging, setPging] = useState(false);
   const [search, setSearch] = useState("");
+  const [folderWidth, setFolderWidth] = useState(() => {
+    if (typeof window === "undefined") return 220;
+    if (window.innerWidth < 640) return 160;
+    if (window.innerWidth < 1024) return 200;
+    return 220;
+  });
+  const lastFolderTapRef = useRef({ group: null, time: 0 });
+
+  // Keep GlassFolder card width responsive across phone, tablet, and desktop breakpoints.
+  useEffect(() => {
+    const updateFolderWidth = () => {
+      if (window.innerWidth < 640) setFolderWidth(160);
+      else if (window.innerWidth < 1024) setFolderWidth(200);
+      else setFolderWidth(220);
+    };
+    window.addEventListener("resize", updateFolderWidth);
+    return () => window.removeEventListener("resize", updateFolderWidth);
+  }, []);
+
+  /**
+   * Detect a double-tap on touch devices so mobile users can open a collection just like desktop double-click.
+   */
+  const handleFolderTouchEnd = (groupName, event) => {
+    // Ignore taps on the action/menu buttons inside the folder.
+    if (event.target.closest("button")) return;
+    const now = Date.now();
+    if (
+      lastFolderTapRef.current.group === groupName &&
+      now - lastFolderTapRef.current.time < 320
+    ) {
+      lastFolderTapRef.current = { group: null, time: 0 };
+      openFolder(groupName);
+    } else {
+      lastFolderTapRef.current = { group: groupName, time: now };
+    }
+  };
 
   useEffect(() => {
     if (selectedTag) {
@@ -111,9 +157,7 @@ export default function NotesFeed({
   return (
     <motion.div
       layout
-      className={`h-full bg-[#1a1a1a] overflow-y-auto px-6 md:px-8 py-8 transition-all duration-1000 ease-in-out flex flex-col ${
-        isSearchActive ? "w-full lg:w-[calc(100%-450px)]" : "w-full"
-      }`}
+      className="h-full w-full bg-[#1a1a1a] overflow-y-auto px-6 md:px-8 py-8 transition-all duration-500 ease-in-out flex flex-col"
     >
       {/* Upper title menu */}
       <div className="flex flex-col gap-5 lg:flex-row md:justify-between mb-8">
@@ -202,23 +246,34 @@ export default function NotesFeed({
       )}
       {loadingNotes ? (
         <div className="flex-1 flex flex-col gap-10 animate-pulse select-none">
-          {/* Skeleton Collections */}
-          <div className="flex flex-col gap-4">
+          {/* Skeleton Collections (matches horizontal GlassFolder + New Collection row) */}
+          <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
             <div className="h-6 w-32 bg-white/10 rounded-lg ml-2" />
-            <div
-              className={`grid gap-6 ${
-                isSearchActive
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              }`}
-            >
+            <div className="no-scrollbar flex flex-nowrap items-start gap-4 sm:gap-6 pt-8 pb-4 px-1 overflow-x-auto overflow-y-hidden">
+              <div className="shrink-0 w-[160px] h-[154px] sm:w-[200px] sm:h-[192px] lg:w-[220px] lg:h-[211px] rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-white/10" />
+                <div className="h-3 w-20 rounded bg-white/10" />
+              </div>
+
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="glass-panel rounded-2xl p-5 min-h-15 border border-white/5 bg-white/[0.02] flex items-center justify-between"
+                  className="shrink-0 w-[160px] h-[154px] sm:w-[200px] sm:h-[192px] lg:w-[220px] lg:h-[211px] flex flex-col justify-end relative"
                 >
-                  <div className="h-4 w-28 bg-white/10 rounded-md" />
-                  <div className="h-5 w-5 bg-white/5 rounded-lg" />
+                  {/* Folder tab */}
+                  <div className="h-3.5 w-14 sm:w-16 rounded-t-lg bg-white/10 ml-3" />
+                  {/* Folder body */}
+                  <div className="flex-1 rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 sm:p-4 flex flex-col justify-between overflow-hidden">
+                    {/* Peeking sheet edge */}
+                    <div className="h-2.5 w-4/5 mx-auto rounded-t-md bg-white/[0.06]" />
+                    <div className="flex items-end justify-between gap-2 pt-2">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-3.5 w-24 sm:w-28 bg-white/10 rounded" />
+                        <div className="h-2.5 w-14 bg-white/[0.07] rounded" />
+                      </div>
+                      <div className="h-6 w-6 rounded-lg bg-white/10 shrink-0" />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -227,13 +282,7 @@ export default function NotesFeed({
           {/* Skeleton Notes */}
           <div className="flex flex-col gap-4">
             <div className="h-6 w-20 bg-white/10 rounded-lg ml-2" />
-            <div
-              className={`grid mb-24 gap-6 ${
-                isSearchActive
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              }`}
-            >
+            <div className="grid mb-24 gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <div
                   key={i}
@@ -308,48 +357,76 @@ export default function NotesFeed({
       ) : (
         <>
           {/* folder setup */}
-          <div className="flex flex-col gap-4 mb-10">
-            <h1 className="internal text-2xl pl-2">Collections</h1>
-            <div
-              className={`grid gap-6 transition-all duration-500 ease-in-out ${
-                isSearchActive
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              }`}
-            >
-              <div
-                onClick={() => {
-                  setCreateModel(true);
-                }}
-                className="flex justify-center items-center border-dashed hover:translate-0.5  rounded-2xl shadow-2xl p-5 min-h-15 relative border-2 border-white/10 transition-all duration-500 ease-in-out cursor-pointer"
-              >
-                <Plus className="w-5 h-5" />
+          <div className="flex flex-col gap-3 sm:gap-4 mb-8 sm:mb-10 min-w-0">
+            <h1 className="internal text-xl sm:text-2xl pl-2">Collections</h1>
+            <div className="no-scrollbar flex flex-nowrap items-start gap-4 sm:gap-6 px-1 overflow-x-auto overflow-y-hidden">
+              <div className="flex justify-center items-end rounded-2xl  w-[160px] h-[154px] sm:w-[200px] sm:h-[192px] lg:w-[220px] lg:h-[211px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateModel(true);
+                  }}
+                  aria-label="Create new collection"
+                  className="shrink-0 flex flex-col justify-center items-center gap-2 border-dashed hover:border-white/25 hover:bg-white/[0.03] rounded-2xl shadow-2xl p-4 sm:p-5 w-[160px] h-[154px] sm:w-[200px] sm:h-[192px] lg:w-[220px] lg:h-[150px] relative border-2 border-white/10 transition-all duration-300 cursor-pointer"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                    New Collection
+                  </span>
+                </button>
               </div>
 
               {folders.map((groupName, indx) => {
                 const isUngroupingThis = ungroupingFolder === groupName;
+                const groupNotes = notes.filter((n) => n.group === groupName);
+                const folderFiles = groupNotes.map((n) => ({
+                  name: n.title || "Untitled",
+                  meta: formatDate ? formatDate(n.updated_at) : n.note_type,
+                  image: n.note_type === "img" ? n.source_url : undefined,
+                }));
+
                 return (
                   <div
-                    key={indx}
-                    onClick={() => openFolder(groupName)}
-                    className="glass-panel hover:translate-0.5 rounded-2xl shadow-2xl p-5 flex justify-between min-h-15 relative border border-white/10 transition-all duration-500 ease-in-out cursor-pointer"
+                    key={groupName}
+                    className="shrink-0"
+                    onDoubleClick={() => openFolder(groupName)}
+                    onTouchEnd={(e) => handleFolderTouchEnd(groupName, e)}
+                    title="Double-click or double-tap to open collection"
                   >
-                    <h1 className="truncate">{groupName}</h1>
-                    <button
-                      title="ungroup"
-                      disabled={Boolean(ungroupingFolder)}
-                      className={`btn-style cursor-pointer ${Boolean(ungroupingFolder) && !isUngroupingThis ? "opacity-50 pointer-events-none" : ""}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        unGroupNotes(groupName);
+                    <GlassFolder
+                      label={groupName}
+                      meta={
+                        isUngroupingThis
+                          ? "Ungrouping..."
+                          : `${groupNotes.length} ${groupNotes.length === 1 ? "note" : "notes"}`
+                      }
+                      tone="dark"
+                      art={MINIMAL_FOLDER_ART}
+                      seed={indx + 1}
+                      width={folderWidth}
+                      files={folderFiles}
+                      action="more"
+                      menu={[
+                        {
+                          label: "Open Collection",
+                          onSelect: () => openFolder(groupName),
+                        },
+                        {
+                          label: isUngroupingThis ? "Ungrouping..." : "Ungroup",
+                          danger: true,
+                          onSelect: () => {
+                            if (!ungroupingFolder) unGroupNotes(groupName);
+                          },
+                        },
+                      ]}
+                      onFileSelect={(_file, index) => {
+                        const selected = groupNotes[index];
+                        if (selected) {
+                          setNoteViewId(selected.id);
+                          setNoteViewOpen(true);
+                        }
                       }}
-                    >
-                      {isUngroupingThis ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-                      ) : (
-                        <UngroupIcon className="w-5 h-5" />
-                      )}
-                    </button>
+                    />
                   </div>
                 );
               })}
@@ -380,11 +457,7 @@ export default function NotesFeed({
             </div>
             <motion.div
               layout
-              className={`grid mb-24 gap-6 transition-all duration-500 ease-in-out ${
-                isSearchActive
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              }`}
+              className="grid mb-24 gap-6 transition-all duration-500 ease-in-out grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
               <AnimatePresence>
                 {filteredNotes.map((note) => {

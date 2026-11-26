@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { X, RefreshCw, Link, Plus } from "lucide-react";
+import { X, RefreshCw, Link, Plus, Maximize2, Minimize2 } from "lucide-react";
 import { api } from "../services/api";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -103,6 +103,13 @@ function AIAnswerPanel({
 }) {
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Collapse back to side-panel mode when dismissing the panel
+  const handleClosePanel = () => {
+    setIsExpanded(false);
+    onClose?.();
+  };
 
   const convoID = convo ? convo.id : "";
   useEffect(() => {
@@ -162,7 +169,11 @@ function AIAnswerPanel({
 
   return (
     <section
-      className={`fixed bg-black top-0 bottom-0 right-0 z-40 lg:z-20 w-full lg:w-[450px] border-l border-white/5 bg-1 lg:bg-slate-950/50 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-transform duration-1000 ease-in-out overflow-hidden transform ${
+      className={`fixed bg-black top-0 bottom-0 right-0 z-40 ${
+        isExpanded
+          ? "w-full border-l-0"
+          : "w-full lg:w-[450px] border-l border-white/5"
+      } bg-1 lg:bg-slate-950/80 backdrop-blur-2xl h-full flex flex-col shadow-2xl transition-all duration-500 ease-in-out overflow-hidden transform ${
         isSearchActive ? "translate-x-0" : "translate-x-full"
       }`}
     >
@@ -192,7 +203,18 @@ function AIAnswerPanel({
             </button>
           )}
           <button
-            onClick={onClose}
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="hidden lg:inline-flex p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            title={isExpanded ? "Restore Side Panel" : "Expand Full Screen"}
+          >
+            {isExpanded ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
+          </button>
+          <button
+            onClick={handleClosePanel}
             className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
             title="Dismiss Panel"
           >
@@ -202,7 +224,8 @@ function AIAnswerPanel({
       </div>
 
       {/* Response body scroll content */}
-      <div className="flex-1 overflow-y-auto scroll-smooth p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto scroll-smooth p-6 pb-28 space-y-6">
+        <div className={isExpanded ? "max-w-3xl mx-auto w-full space-y-6" : "space-y-6"}>
         {/* Streaming Content */}
         <div className="space-y-3">
           <p className="text-[10px] uppercase font-bold internal tracking-wider">
@@ -298,6 +321,7 @@ function AIAnswerPanel({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Panel footer bar */}
