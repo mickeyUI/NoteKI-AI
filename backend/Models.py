@@ -55,3 +55,11 @@ class Messages(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
 Message = Messages
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)

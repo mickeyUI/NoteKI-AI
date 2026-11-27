@@ -301,4 +301,12 @@ export const api = {
         question: Question,
       }),
     }),
+
+  submitFeedback: (message) =>
+    apiRequest("/Feedback", {
+      method: "POST",
+      body: JSON.stringify({
+        message,
+      }),
+    }),
 };

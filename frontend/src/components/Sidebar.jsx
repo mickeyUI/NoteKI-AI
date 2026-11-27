@@ -10,6 +10,7 @@ import {
   PanelLeftOpen,
   Loader2,
   Plus,
+  MessageSquarePlus,
 } from "lucide-react";
 
 /**
@@ -35,6 +36,7 @@ export default function Sidebar({
   isMobile = false,
   collapsed = false,
   onItemClick,
+  onOpenFeedback,
 }) {
   const displayEmail = userEmail || "User";
   const initial = (displayEmail.trim().charAt(0) || "U").toUpperCase();
@@ -76,15 +78,26 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Bottom user icon */}
-        <button
-          type="button"
-          onClick={() => pullButton(false)}
-          className="w-8 h-8 rounded-full bg-gradient-to-tr from-white to-black/10 flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-lg shadow-purple-500/10 cursor-pointer"
-          title={displayEmail}
-        >
-          {initial}
-        </button>
+        {/* Bottom feedback & user icon */}
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onOpenFeedback?.()}
+            className="btn-style cursor-pointer"
+            title="Give Feedback"
+          >
+            <MessageSquarePlus className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => pullButton(false)}
+            className="w-8 h-8 rounded-full bg-gradient-to-tr from-white to-black/10 flex items-center justify-center font-bold text-sm text-white shrink-0 shadow-lg shadow-purple-500/10 cursor-pointer"
+            title={displayEmail}
+          >
+            {initial}
+          </button>
+        </div>
       </aside>
     );
   }
@@ -232,6 +245,21 @@ export default function Sidebar({
             })
           )}
         </div>
+      </div>
+
+      {/* Give Feedback */}
+      <div className="px-3 pb-2">
+        <button
+          type="button"
+          onClick={() => {
+            onOpenFeedback?.();
+            if (onItemClick) onItemClick();
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+        >
+          <MessageSquarePlus className="w-4 h-4 shrink-0" />
+          <span>Give Feedback</span>
+        </button>
       </div>
 
       {/* Profile and Logout info footer */}

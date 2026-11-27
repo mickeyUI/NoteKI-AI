@@ -23,10 +23,11 @@ from Schemas import (
     EditNote,
     lstofnotes,
     GroupingCustom,
+    CreateFeedback,
 )
 from Auth import get_current_user
 from DB import get_db, init_db
-from Models import User, Note, Converstions, Messages
+from Models import User, Note, Converstions, Messages, Feedback
 from LLM import convertToEmbedable, get_embedding, generate, Img_Analysis, Name_Group, link_preview, transcribe_audio
 import json
 import uuid
@@ -575,4 +576,18 @@ def Populate(Data: lstofnotes, userID= Depends(get_current_user), db= Depends(ge
         db.add(newNote)
     db.commit()
     return {"Note": "Added"}
+
+
+# Persist user feedback messages linked to the authenticated user in Postgres.
+@app.post("/Feedback")
+def SubmitFeedback(payload: CreateFeedback, userID=Depends(get_current_user), db=Depends(get_db)):
+    cleaned = (payload.message or "").strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Feedback message cannot be empty")
+    item = Feedback(user_id=userID, message=cleaned)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return {"status": "ok", "id": str(item.id)}
+
 

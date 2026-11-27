@@ -97,3 +97,7 @@ class noticas(BaseModel):
 
 class lstofnotes(BaseModel):
     notes: list[noticas]
+
+
+class CreateFeedback(BaseModel):
+    message: str

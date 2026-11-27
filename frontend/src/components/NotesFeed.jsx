@@ -188,65 +188,76 @@ export default function NotesFeed({
             </p>
           </div>
         </div>
-        <div className="flex gap-2 justify-start items-center flex-wrap sm:flex-nowrap">
-          <div className="relative flex items-center flex-1 sm:flex-none sm:w-72 md:w-80 h-10 rounded-full bg-[#242424] border border-white/10 focus-within:border-white/25 px-3.5 gap-2.5 transition-colors">
-            <SearchIcon className="w-4 h-4 text-slate-400 shrink-0 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runPgSearch();
-                }
-              }}
-              type="text"
-              placeholder="Search notes or #tag..."
-              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-slate-400 focus:outline-none"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={cancelSearch}
-                className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-                title="Clear search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-[#323232] border border-white/10 text-[11px] font-medium text-slate-300 shrink-0 select-none">
-                ⌘K
-              </kbd>
-            )}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 justify-start sm:items-center">
+          <div className="pl-11 sm:pl-0 w-full sm:w-auto">
+            <div className="relative flex items-center w-full sm:w-72 md:w-80 h-10 rounded-full bg-[#242424] border border-white/10 focus-within:border-white/25 px-3.5 gap-2.5 transition-colors">
+              <SearchIcon className="w-4 h-4 text-slate-400 shrink-0 pointer-events-none" />
+              <input
+                ref={searchInputRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runPgSearch();
+                  }
+                }}
+                type="text"
+                placeholder="Search notes or #tag..."
+                className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-slate-400 focus:outline-none"
+              />
+              {search ? (
+                <button
+                  type="button"
+                  onClick={cancelSearch}
+                  className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full bg-[#323232] border border-white/10 text-[11px] font-medium text-slate-300 shrink-0 select-none">
+                  ⌘K
+                </kbd>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => {
-              openUpload(true);
-            }}
-            className="btn-style h-10"
-            title="Upload Image"
-          >
-            <UploadIcon className="w-5 h-5" />
-          </button>
 
-          <button
-            onClick={onOpenCreateNoteModal}
-            className="btn-style cursor-pointer  h-10"
-            title="Create note"
-          >
-            <SquarePen className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={() => {
+                openUpload(true);
+              }}
+              className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full bg-[#242424] hover:bg-[#2f2f2f] border border-white/10 text-xs font-medium text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+              title="Upload Image"
+            >
+              <UploadIcon className="w-4 h-4 text-slate-300" />
+              <span>Upload</span>
+            </button>
 
-          <button
-            onClick={() => {
-              if (openVoice) openVoice(true);
-            }}
-            className="btn-style cursor-pointer h-10"
-            title="Voice Note"
-          >
-            <MicAudioLines className="w-5 h-5" />
-          </button>
+            <button
+              type="button"
+              onClick={onOpenCreateNoteModal}
+              className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full bg-[#242424] hover:bg-[#2f2f2f] border border-white/10 text-xs font-medium text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+              title="Create note"
+            >
+              <SquarePen className="w-4 h-4 text-slate-300" />
+              <span>New Note</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (openVoice) openVoice(true);
+              }}
+              className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full bg-[#242424] hover:bg-[#2f2f2f] border border-white/10 text-xs font-medium text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+              title="Voice Note"
+            >
+              <MicAudioLines className="w-4 h-4 text-slate-300" />
+              <span>Audio</span>
+            </button>
+          </div>
         </div>
       </div>
       <SearchDisplayPopup

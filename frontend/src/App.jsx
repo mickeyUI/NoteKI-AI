@@ -20,6 +20,7 @@ import { toast, Toaster } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "./supabaseClient";
 import CreateCollection from "./components/CreateCollection";
+import FeedbackModal from "./components/FeedbackModal";
 import { Trash2 } from "lucide-react";
 import {
   populate,
@@ -66,6 +67,7 @@ export default function App() {
   const [isFolderOpen, setFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
+  const [isFeedbackOpen, setFeedbackOpen] = useState(false);
   const getPinnedKey = useCallback(
     (uid) => (uid ? `pinned_notes_${uid}` : "pinned_notes"),
     [],
@@ -1298,20 +1300,32 @@ export default function App() {
   return (
     <div className="flex  h-screen text-slate-100 overflow-hidden font-sans select-none">
       <Toaster position="top-center" theme="light" />
-      {/* Sidebar - Floating Drawer (or collapsed icon rail) on Mobile, Collapsible Rail/Panel on Desktop */}
+      {/* Sidebar - Floating Expand Button + Slide-over Drawer on Mobile, Collapsible Rail/Panel on Desktop */}
       {isMobile ? (
         <>
           {pullSidebar && (
-            <div className="w-14 shrink-0 h-full relative z-30">
-              <Sidebar
-                userEmail={session?.user?.email || getOfflineAuth()?.email || ""}
-                handleGrouping={handleGrouping}
-                Grouping={grouping}
-                pullButton={setPullSidebar}
-                isMobile={true}
-                collapsed={true}
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => setPullSidebar(false)}
+              aria-label="Open sidebar"
+              title="Open sidebar"
+              className="fixed top-8 left-4 z-40 w-10 h-10 rounded-full bg-[#242424]/90 hover:bg-[#2f2f2f] backdrop-blur-md border border-white/10 flex items-center justify-center text-slate-200 hover:text-white shadow-lg transition-colors cursor-pointer"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M3 6.5H15M3 11.5H10.5"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
           )}
           <AnimatePresence>
             {!pullSidebar && (
@@ -1357,6 +1371,7 @@ export default function App() {
                     onStartNewChat={handleStartNewChat}
                     isMobile={true}
                     onItemClick={() => setPullSidebar(true)}
+                    onOpenFeedback={() => setFeedbackOpen(true)}
                   />
                 </motion.div>
               </motion.div>
@@ -1389,6 +1404,7 @@ export default function App() {
               onStartNewChat={handleStartNewChat}
               isMobile={false}
               collapsed={pullSidebar}
+              onOpenFeedback={() => setFeedbackOpen(true)}
             />
           </div>
         </motion.div>
@@ -1580,6 +1596,11 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+      />
     </div>
   );
 }
