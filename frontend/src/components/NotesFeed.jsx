@@ -177,8 +177,8 @@ export default function NotesFeed({
       className="h-full w-full bg-[#1a1a1a] overflow-y-auto px-6 md:px-8 py-8 transition-all duration-500 ease-in-out flex flex-col"
     >
       {/* Upper title menu */}
-      <div className="flex flex-col gap-5 lg:flex-row md:justify-between mb-8">
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-5 lg:flex-row md:justify-between mb-6 sm:mb-8">
+        <div className="hidden sm:flex gap-2">
           <div>
             <h1 className="text-2xl font-bold tracking-tight internal mb-1">
               Lore Knowledge Base
@@ -266,7 +266,7 @@ export default function NotesFeed({
           {/* Skeleton Collections (matches horizontal GlassFolder + New Collection row) */}
           <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
             <div className="h-6 w-32 bg-white/10 rounded-lg ml-2" />
-            <div className="no-scrollbar flex flex-nowrap items-start gap-4 sm:gap-6 pt-8 pb-4 px-1 overflow-x-auto overflow-y-hidden">
+            <div className="no-scrollbar -mx-6 md:-mx-8 px-6 md:px-8 flex flex-nowrap items-start gap-4 sm:gap-6 pt-8 pb-4 overflow-x-auto overflow-y-hidden">
               <div className="shrink-0 w-[160px] h-[154px] sm:w-[200px] sm:h-[192px] lg:w-[220px] lg:h-[211px] rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-2">
                 <div className="w-5 h-5 rounded-md bg-white/10" />
                 <div className="h-3 w-20 rounded bg-white/10" />
@@ -344,7 +344,7 @@ export default function NotesFeed({
           {onRetryNotes && (
             <button
               onClick={onRetryNotes}
-              className="py-2.5 px-5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-colors cursor-pointer text-xs flex items-center gap-2"
+              className="py-2.5 px-5 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-xl transition-colors cursor-pointer text-xs flex items-center gap-2"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Retry Connection</span>
@@ -376,7 +376,7 @@ export default function NotesFeed({
           {/* folder setup */}
           <div className="flex flex-col gap-3 sm:gap-4 mb-8 sm:mb-10 min-w-0">
             <h1 className="internal text-xl sm:text-2xl pl-2">Collections</h1>
-            <div className="no-scrollbar flex flex-nowrap items-start gap-4 sm:gap-6 px-1 overflow-x-auto overflow-y-hidden">
+            <div className="no-scrollbar -mx-6 md:-mx-8 px-6 md:px-8 flex flex-nowrap items-start gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden">
               <div className="flex justify-center items-end rounded-2xl  w-[160px] h-[154px] sm:w-[200px] sm:h-[192px] lg:w-[220px] lg:h-[211px]">
                 <button
                   type="button"
