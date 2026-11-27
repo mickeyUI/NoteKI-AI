@@ -1,22 +1,53 @@
 import { useState, useEffect } from "react";
-import ParticleBackground from "./ParticleBackground";
 import {
-  Mail,
+  AtSign,
   Lock,
+  Eye,
+  EyeOff,
   ShieldAlert,
-  Sparkles,
   Loader2,
   MailCheck,
   ArrowLeft,
+  ArrowRight,
   RefreshCw,
   CheckCircle2,
+  Layers,
+  MessageSquare,
+  Zap,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 
+const FEATURE_HIGHLIGHTS = [
+  {
+    icon: Layers,
+    title: "Everything you know. One place.",
+    description:
+      "Voice recordings, screenshots, text notes, and web bookmarks automatically indexed in real time.",
+  },
+  {
+    icon: MessageSquare,
+    title: "One conversation away.",
+    description:
+      "Ask your second brain questions in natural language and synthesize answers with accurate citations.",
+  },
+  {
+    icon: Zap,
+    title: "Think less about finding. More about creating.",
+    description:
+      "Instant AI auto-summaries, auto-generated relationship graphs, and lightning-fast semantic search.",
+  },
+];
+
+/**
+ * Split-screen authentication page for Sign In and Sign Up.
+ * Displays the Lore product overview on the left (desktop lg+) and the
+ * email/Google auth form on the right using the app's monochrome dark theme.
+ */
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -38,9 +69,20 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, [resendCooldown]);
 
+  // Switch between Sign In and Sign Up modes while clearing transient form alerts.
+  const switchAuthMode = (nextIsLogin) => {
+    setIsLogin(nextIsLogin);
+    setError("");
+    setUserAlreadyExists(false);
+    setResendSuccess("");
+  };
+
+  // Initiate Google OAuth login via Supabase.
   const handleGoogleSignIn = async () => {
     if (!navigator.onLine) {
-      setError("You are currently offline. Connect to the internet to sign in with Google.");
+      setError(
+        "You are currently offline. Connect to the internet to sign in with Google.",
+      );
       return;
     }
 
@@ -67,10 +109,13 @@ export default function AuthPage() {
     }
   };
 
+  // Resend Supabase signup verification email with a 60-second cooldown.
   const handleResendEmail = async () => {
     if (!email || resendCooldown > 0) return;
     if (!navigator.onLine) {
-      setError("You are currently offline. Connect to the internet to resend the email.");
+      setError(
+        "You are currently offline. Connect to the internet to resend the email.",
+      );
       return;
     }
     setResendLoading(true);
@@ -86,7 +131,9 @@ export default function AuthPage() {
       if (error) {
         setError(error.message);
       } else {
-        setResendSuccess("Verification email resent! Please check your inbox and spam folder.");
+        setResendSuccess(
+          "Verification email resent! Please check your inbox and spam folder.",
+        );
         setResendCooldown(60);
       }
     } catch (err) {
@@ -96,6 +143,7 @@ export default function AuthPage() {
     }
   };
 
+  // Validate credentials and submit either Sign In or Sign Up to Supabase.
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -175,120 +223,206 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 select-none">
-      <ParticleBackground />
-
-      {/* Main Glass Card container */}
-      <div className="relative z-10 w-full max-w-md">
-        {/* Ambient background blur blobs */}
-        <div className="absolute -top-12 -left-12 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="glass-panel rounded-3xl p-8 shadow-2xl relative overflow-hidden border border-white/10">
-          {/* Top gradient border highlight */}
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
-
-          {/* Heading */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 mb-3 animate-pulse">
-              <Sparkles className="w-6 h-6 text-purple-400" />
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent mb-1">
+    <div className="min-h-screen w-full bg-[#121212] text-slate-100 grid grid-cols-1 lg:grid-cols-2 select-none">
+      {/* Left Marketing / Brand Panel (Desktop lg+) */}
+      <div className="hidden lg:flex flex-col justify-between bg-[#161616] border-r border-white/10 p-10 xl:p-14 relative overflow-hidden">
+        {/* Top Brand Mark */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl font-bold tracking-tight text-white">
               Lore
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+              BETA
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Your AI-powered memory</p>
+        </div>
+
+        {/* Center Value Proposition & Feature List */}
+        <div className="relative z-10 max-w-lg my-auto py-12 space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-[1.1]">
+              Stop searching.
+              <br />
+              Start <span className="text-slate-400">knowing.</span>
             </h1>
-            <p className="text-slate-400 text-sm font-medium">
-              Your AI-powered memory
+            <p className="text-sm xl:text-base text-slate-400 leading-relaxed max-w-md">
+              Your mind has enough to remember. Let Lore organize, connect, and
+              synthesize everything you learn.
             </p>
           </div>
 
-          {/* Dedicated Check Your Email Card View */}
-          {confirmationSent ? (
-            <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-300">
-              <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center text-cyan-400">
-                <MailCheck className="w-8 h-8" />
-              </div>
-
-              <div>
-                <h2 className="text-xl font-bold text-white mb-2">
-                  Check Your Email
-                </h2>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  We sent a confirmation link to:
-                </p>
-                <p className="text-sm font-semibold text-cyan-300 mt-1 break-all">
-                  {email}
-                </p>
-                <p className="text-xs text-slate-400 mt-3 leading-relaxed">
-                  Click the link in your inbox to verify your account, then sign in to start using Lore.
-                </p>
-              </div>
-
-              {resendSuccess && (
-                <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-4 py-2.5 rounded-xl text-xs text-left">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>{resendSuccess}</span>
+          <div className="space-y-5">
+            {FEATURE_HIGHLIGHTS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-200 shrink-0 mt-0.5">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h2 className="text-sm font-semibold text-white">
+                      {item.title}
+                    </h2>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="relative z-10 text-xs text-slate-600">
+          Lore Knowledge Base
+        </div>
+      </div>
+
+      {/* Right Auth Panel */}
+      <div className="flex flex-col min-h-screen bg-[#121212] p-6 sm:p-10">
+        {/* Top Bar: Compact Brand on Mobile + Mode Toggle on Right */}
+        <div className="flex items-center justify-between lg:justify-end gap-4">
+          <div className="flex lg:hidden items-center gap-2">
+            <span className="text-lg font-bold tracking-tight text-white">
+              Lore
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+              BETA
+            </span>
+          </div>
+
+          {!confirmationSent && (
+            <div className="text-xs sm:text-sm text-slate-400">
+              {isLogin ? (
+                <span>
+                  Don&apos;t have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => switchAuthMode(false)}
+                    className="text-white hover:text-slate-300 font-semibold transition-colors cursor-pointer underline underline-offset-4"
+                  >
+                    Sign up
+                  </button>
+                </span>
+              ) : (
+                <span>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => switchAuthMode(true)}
+                    className="text-white hover:text-slate-300 font-semibold transition-colors cursor-pointer underline underline-offset-4"
+                  >
+                    Sign in
+                  </button>
+                </span>
               )}
-
-              {error && (
-                <div className="flex items-center gap-2.5 bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-2.5 rounded-xl text-xs text-left">
-                  <ShieldAlert className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="space-y-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleResendEmail}
-                  disabled={resendLoading || resendCooldown > 0}
-                  className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {resendLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Resending...</span>
-                    </>
-                  ) : resendCooldown > 0 ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Resend email in {resendCooldown}s</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Resend Verification Email</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirmationSent(false);
-                    setIsLogin(true);
-                    setError("");
-                  }}
-                  className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Sign In</span>
-                </button>
-              </div>
             </div>
-          ) : (
-            <>
-              {/* Continue with Google (Primary OAuth Action) */}
-              <div className="mb-6">
+          )}
+        </div>
+
+        {/* Centered Auth Container */}
+        <div className="flex-1 flex items-center justify-center py-8">
+          <div className="w-full max-w-sm space-y-6">
+            {confirmationSent ? (
+              <div className="space-y-6 text-center rounded-2xl bg-[#1a1a1a] border border-white/10 p-6 sm:p-7">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl w-16 h-16 mx-auto flex items-center justify-center text-white">
+                  <MailCheck className="w-8 h-8" />
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-2">
+                    Check Your Email
+                  </h2>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    We sent a confirmation link to:
+                  </p>
+                  <p className="text-sm font-semibold text-white mt-1 break-all">
+                    {email}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-3 leading-relaxed">
+                    Click the link in your inbox to verify your account, then
+                    sign in to start using Lore.
+                  </p>
+                </div>
+
+                {resendSuccess && (
+                  <div className="flex items-center gap-2.5 bg-white/5 border border-white/15 text-slate-200 px-4 py-2.5 rounded-xl text-xs text-left">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>{resendSuccess}</span>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="flex items-center gap-2.5 bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-2.5 rounded-xl text-xs text-left">
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleResendEmail}
+                    disabled={resendLoading || resendCooldown > 0}
+                    className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {resendLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Resending...</span>
+                      </>
+                    ) : resendCooldown > 0 ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Resend email in {resendCooldown}s</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Resend Verification Email</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmationSent(false);
+                      switchAuthMode(true);
+                    }}
+                    className="w-full py-3 px-4 bg-white hover:bg-slate-200 text-[#121212] rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Sign In</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Form Heading */}
+                <div className="text-center space-y-1.5">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                    {isLogin ? "Welcome back" : "Let's get started"}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                    {isLogin
+                      ? "Sign in to your Lore account and access your memories across every device."
+                      : "Create your Lore account and sync your memories seamlessly across every device."}
+                  </p>
+                </div>
+
+                {/* Continue with Google */}
                 <button
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={googleLoading || loading}
-                  className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/25 text-white font-semibold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-3 text-sm shadow-sm hover:shadow-md"
+                  className="w-full py-3 px-4 bg-[#1a1a1a] hover:bg-[#222222] border border-white/10 hover:border-white/20 text-white font-semibold rounded-xl transition-all duration-200 cursor-pointer flex items-center justify-center gap-3 text-sm"
                 >
                   {googleLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-300" />
                       <span>Connecting to Google...</span>
                     </>
                   ) : (
@@ -315,169 +449,149 @@ export default function AuthPage() {
                     </>
                   )}
                 </button>
-              </div>
 
-              {/* Divider */}
-              <div className="relative mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10" />
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-wider">
+                    <span className="px-3 bg-[#121212] text-slate-500 font-semibold">
+                      or continue with email
+                    </span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-[#0d121f] text-slate-400 font-medium rounded-full">
-                    or continue with email
-                  </span>
-                </div>
-              </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Error Banner with contextual actions */}
-                {error && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-xl text-sm transition-all duration-300">
-                      <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
-                      <span>{error}</span>
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Error Banner with contextual actions */}
+                  {error && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-xl text-xs sm:text-sm">
+                        <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+                        <span>{error}</span>
+                      </div>
+
+                      {userAlreadyExists && (
+                        <button
+                          type="button"
+                          onClick={() => switchAuthMode(true)}
+                          className="w-full py-2 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 transition-colors cursor-pointer text-center"
+                        >
+                          Sign in with this email →
+                        </button>
+                      )}
+
+                      {error.toLowerCase().includes("not confirmed") && (
+                        <button
+                          type="button"
+                          onClick={handleResendEmail}
+                          disabled={resendLoading || resendCooldown > 0}
+                          className="w-full py-2 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-200 rounded-lg border border-white/10 transition-colors cursor-pointer text-center"
+                        >
+                          {resendCooldown > 0
+                            ? `Resend confirmation link (${resendCooldown}s)`
+                            : "Resend confirmation email"}
+                        </button>
+                      )}
                     </div>
+                  )}
 
-                    {userAlreadyExists && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsLogin(true);
-                          setError("");
-                          setUserAlreadyExists(false);
-                        }}
-                        className="w-full py-2 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 rounded-lg border border-white/10 transition-colors cursor-pointer text-center"
-                      >
-                        Sign in with this email →
-                      </button>
-                    )}
+                  {resendSuccess && (
+                    <div className="flex items-center gap-2.5 bg-white/5 border border-white/15 text-slate-200 px-4 py-2.5 rounded-xl text-xs">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>{resendSuccess}</span>
+                    </div>
+                  )}
 
-                    {error.toLowerCase().includes("not confirmed") && (
-                      <button
-                        type="button"
-                        onClick={handleResendEmail}
-                        disabled={resendLoading || resendCooldown > 0}
-                        className="w-full py-2 px-3 text-xs font-semibold bg-white/5 hover:bg-white/10 text-purple-300 hover:text-purple-200 rounded-lg border border-white/10 transition-colors cursor-pointer text-center"
-                      >
-                        {resendCooldown > 0
-                          ? `Resend confirmation link (${resendCooldown}s)`
-                          : "Resend confirmation email"}
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {resendSuccess && (
-                  <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-4 py-2.5 rounded-xl text-xs">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>{resendSuccess}</span>
-                  </div>
-                )}
-
-                {/* Email Address */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <Mail className="w-4 h-4 text-slate-500" />
-                    </span>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="glass-input w-full py-3 pl-10 pr-4 text-white placeholder-slate-500 rounded-xl text-sm"
-                      placeholder="name@example.com"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                      Password
+                  {/* Email Address */}
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block">
+                      Email Address
                     </label>
-                    {!isLogin && (
-                      <span className="text-[11px] text-slate-400">
-                        Min. 6 characters
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <AtSign className="w-4 h-4 text-slate-500" />
                       </span>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="glass-input w-full py-3 pl-10 pr-4 text-white placeholder-slate-500 rounded-xl text-sm border border-white/10 focus:border-white/25"
+                        placeholder="name@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block">
+                        Password
+                      </label>
+                      {!isLogin && (
+                        <span className="text-[11px] text-slate-500">
+                          Minimum 6 characters
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Lock className="w-4 h-4 text-slate-500" />
+                      </span>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        minLength={6}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="glass-input w-full py-3 pl-10 pr-10 text-white placeholder-slate-500 rounded-xl text-sm border border-white/10 focus:border-white/25"
+                        placeholder={
+                          isLogin
+                            ? "Enter your password"
+                            : "Create a strong password"
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                        title={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Submit CTA */}
+                  <button
+                    type="submit"
+                    disabled={loading || googleLoading}
+                    className="w-full py-3.5 px-4 bg-white hover:bg-slate-200 text-[#121212] font-semibold rounded-xl transition-all duration-200 shadow-[0_0_20px_rgba(255,255,255,0.08)] cursor-pointer flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>
+                          {isLogin ? "Signing In..." : "Creating Account..."}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{isLogin ? "Sign In" : "Create Account"}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
                     )}
-                  </div>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <Lock className="w-4 h-4 text-slate-500" />
-                    </span>
-                    <input
-                      type="password"
-                      value={password}
-                      minLength={6}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="glass-input w-full py-3 pl-10 pr-4 text-white placeholder-slate-500 rounded-xl text-sm"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Submit CTA */}
-                <button
-                  type="submit"
-                  disabled={loading || googleLoading}
-                  className="w-full relative group overflow-hidden py-3.5 px-4 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 hover:from-cyan-400 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(99,102,241,0.25)] hover:shadow-[0_0_25px_rgba(99,102,241,0.45)] cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isLogin ? "Signing In..." : "Creating Account..."}</span>
-                    </>
-                  ) : (
-                    <span>{isLogin ? "Sign In" : "Create Account"}</span>
-                  )}
-                </button>
-
-                {/* Toggle screen trigger */}
-                <div className="text-center text-sm text-slate-400 pt-2">
-                  {isLogin ? (
-                    <p>
-                      Don't have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsLogin(false);
-                          setError("");
-                          setUserAlreadyExists(false);
-                          setResendSuccess("");
-                        }}
-                        className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors duration-200 underline underline-offset-4 cursor-pointer"
-                      >
-                        Sign Up
-                      </button>
-                    </p>
-                  ) : (
-                    <p>
-                      Already have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsLogin(true);
-                          setError("");
-                          setUserAlreadyExists(false);
-                          setResendSuccess("");
-                        }}
-                        className="text-purple-400 hover:text-purple-300 font-semibold transition-colors duration-200 underline underline-offset-4 cursor-pointer"
-                      >
-                        Sign In
-                      </button>
-                    </p>
-                  )}
-                </div>
-              </form>
-            </>
-          )}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
