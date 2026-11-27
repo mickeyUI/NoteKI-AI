@@ -27,7 +27,7 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: "/icon.png",
+            src: "/lcon192.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any",

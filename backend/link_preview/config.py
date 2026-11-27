@@ -56,7 +56,8 @@ RATE_LIMIT: str = os.getenv("RATE_LIMIT", "30/minute")
 
 # Comma-separated frontend origins allowed by CORS.
 ALLOWED_ORIGINS: list[str] = _get_origins(
-    "ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,https://note-ki-ai.vercel.app",
 )
 
 # Honest, descriptive User-Agent so target site operators know what is fetching their page.
