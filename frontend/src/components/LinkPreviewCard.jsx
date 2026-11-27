@@ -18,41 +18,28 @@ function getFallbackDomain(url) {
  */
 export default function LinkPreviewCard({ url }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const [imgReady, setImgReady] = useState(false);
   const [faviconFailed, setFaviconFailed] = useState(false);
 
   const valid = isValidHttpUrl(url);
   const { data, isLoading, isError } = useLinkPreview(url);
 
-  // Reset image/favicon loading state whenever the URL or resolved preview image changes.
+  // Reset image/favicon error state whenever the URL or resolved preview image changes.
   useEffect(() => {
     setImgFailed(false);
-    setImgReady(false);
     setFaviconFailed(false);
   }, [url, data?.image]);
 
   if (!valid) return null;
 
   const isFallback = isError || !data || data.fallback;
-  const waitingForImage =
-    !isLoading && !isFallback && Boolean(data?.image) && !imgReady && !imgFailed;
 
-  // Keep showing the skeleton until both the JSON metadata and preview image are ready.
-  if (isLoading || waitingForImage) {
+  // Show skeleton only while the metadata request itself is in flight.
+  if (isLoading) {
     return (
       <div
         className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse space-y-3"
         aria-label="Loading link preview"
       >
-        {waitingForImage && (
-          <img
-            src={data.image}
-            alt=""
-            onLoad={() => setImgReady(true)}
-            onError={() => setImgFailed(true)}
-            className="hidden"
-          />
-        )}
         <div className="h-36 w-full rounded-xl bg-white/10" />
         <div className="h-4 w-3/4 rounded bg-white/10" />
         <div className="h-3 w-full rounded bg-white/10" />
@@ -103,6 +90,7 @@ export default function LinkPreviewCard({ url }) {
           <img
             src={data.image}
             alt={data.title ? `Preview image for ${data.title}` : `Preview image for ${domain}`}
+            referrerPolicy="no-referrer"
             onError={() => setImgFailed(true)}
             className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
           />

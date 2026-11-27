@@ -7,73 +7,66 @@ import ViewVoiceNote from "./ViewVoiceNote";
 import { parseTagList } from "./ViewNoteShared";
 
 /**
- * Shared modal shell for viewing and editing text, image, and voice notes.
- * Renders as a full-screen sheet with sticky header/footer on mobile (< 640px)
- * and as a centered glass modal on desktop/PC, while handling IndexedDB media
- * blob loading and keyboard shortcuts (Esc, Ctrl/Cmd+S).
+ * Return the persisted source URL for a note, stripping stale session-only
+ * blob: URLs when no live Blob is attached.
  */
-export default function ViewNote({
-  isOpen,
+function getInitialSourceUrl(note) {
+  const raw = note?.source_url || note?.sourceUrl || "";
+  if (raw.startsWith("blob:") && !(note?.mediaBlob instanceof Blob)) {
+    return "";
+  }
+  return raw;
+}
+
+/**
+ * Keyed inner note editor/viewer mounted fresh for each selected note ID so
+ * opening a note never flashes the previous note's type or content.
+ */
+function ViewNoteContent({
+  selectedNote,
   setView,
   onSubmit,
   onDelete,
   loading,
-  noteid,
-  notes,
   folders = [],
   userId,
 }) {
-  const [id, setId] = useState("");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [tags, setTags] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [group, setGroup] = useState("none");
-  const [creation, setCreated] = useState("");
-  const [noteType, setNoteType] = useState("");
-  const [mediaBlob, setMediaBlob] = useState(null);
+  const [title, setTitle] = useState(() => selectedNote.title || "");
+  const [content, setContent] = useState(() => selectedNote.content || "");
+  const [tags, setTags] = useState(() => selectedNote.tags || "");
+  const [sourceUrl, setSourceUrl] = useState(() => getInitialSourceUrl(selectedNote));
+  const [group, setGroup] = useState(() => selectedNote.group || "none");
+  const [mediaBlob, setMediaBlob] = useState(() =>
+    selectedNote.mediaBlob instanceof Blob ? selectedNote.mediaBlob : null,
+  );
   const [audioError, setAudioError] = useState(false);
   const [imageError, setImageError] = useState(false);
   const audioBlobUrlRef = useRef(null);
 
-  const selectedNote = notes.find((note) => note.id == noteid);
+  const id = selectedNote.id;
+  const creation = selectedNote.created_at || "";
+  const noteType = selectedNote.note_type || "text";
 
-  // Sync local form state and resolve local mediaBlob URLs whenever the selected note changes.
+  // Create a fresh object URL for attached Blobs or load cached media from IndexedDB.
   useEffect(() => {
-    if (!selectedNote) return;
-    setId(selectedNote.id);
-    setTitle(selectedNote.title || "");
-    setContent(selectedNote.content || "");
-    setTags(selectedNote.tags || "");
-    setGroup(selectedNote.group || "none");
-    setCreated(selectedNote.created_at || "");
-    setNoteType(selectedNote.note_type || "text");
-    setAudioError(false);
-    setImageError(false);
-    setMediaBlob(
-      selectedNote.mediaBlob instanceof Blob ? selectedNote.mediaBlob : null,
-    );
-
     if (audioBlobUrlRef.current) {
       URL.revokeObjectURL(audioBlobUrlRef.current);
       audioBlobUrlRef.current = null;
     }
 
-    let resolvedSource =
-      selectedNote.source_url || selectedNote.sourceUrl || "";
-
     if (selectedNote.mediaBlob instanceof Blob) {
       const freshBlob = URL.createObjectURL(selectedNote.mediaBlob);
       audioBlobUrlRef.current = freshBlob;
-      resolvedSource = freshBlob;
+      setSourceUrl(freshBlob);
+      return () => {
+        if (audioBlobUrlRef.current) {
+          URL.revokeObjectURL(audioBlobUrlRef.current);
+          audioBlobUrlRef.current = null;
+        }
+      };
     }
 
-    setSourceUrl(resolvedSource);
-
-    if (
-      (selectedNote.note_type === "voice" || selectedNote.note_type === "img") &&
-      !(selectedNote.mediaBlob instanceof Blob)
-    ) {
+    if (noteType === "voice" || noteType === "img") {
       getDB(userId || selectedNote?.user_id)
         .then((db) => {
           const tx = db.transaction("notes", "readonly");
@@ -104,7 +97,7 @@ export default function ViewNote({
         audioBlobUrlRef.current = null;
       }
     };
-  }, [selectedNote, userId]);
+  }, [selectedNote, noteType, userId]);
 
   // Submit edited note fields while preserving persisted remote media URLs.
   const submitChanges = useCallback(() => {
@@ -119,7 +112,9 @@ export default function ViewNote({
       originalSource &&
       !originalSource.startsWith("blob:")
         ? originalSource
-        : sourceUrl;
+        : sourceUrl.startsWith("blob:")
+          ? ""
+          : sourceUrl;
 
     onSubmit({
       id,
@@ -138,7 +133,6 @@ export default function ViewNote({
 
   // Handle Escape to close and Ctrl/Cmd+S to save while the modal is open.
   useEffect(() => {
-    if (!isOpen) return;
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         setView(false);
@@ -149,13 +143,89 @@ export default function ViewNote({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, setView, submitChanges]);
+  }, [setView, submitChanges]);
 
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col h-full sm:block">
+      {noteType === "img" ? (
+        <ViewImageNote
+          id={id}
+          title={title}
+          setTitle={setTitle}
+          content={content}
+          setContent={setContent}
+          tags={tags}
+          setTags={setTags}
+          sourceUrl={sourceUrl}
+          creation={creation}
+          mediaBlob={mediaBlob}
+          imageError={imageError}
+          setImageError={setImageError}
+          loading={loading}
+          onClose={() => setView(false)}
+          onDelete={onDelete}
+        />
+      ) : noteType === "voice" ? (
+        <ViewVoiceNote
+          title={title}
+          setTitle={setTitle}
+          content={content}
+          setContent={setContent}
+          tags={tags}
+          setTags={setTags}
+          sourceUrl={sourceUrl}
+          creation={creation}
+          mediaBlob={mediaBlob}
+          audioError={audioError}
+          setAudioError={setAudioError}
+          loading={loading}
+          onClose={() => setView(false)}
+        />
+      ) : (
+        <ViewTextNote
+          title={title}
+          setTitle={setTitle}
+          content={content}
+          setContent={setContent}
+          tags={tags}
+          setTags={setTags}
+          sourceUrl={sourceUrl}
+          setSourceUrl={setSourceUrl}
+          group={group}
+          setGroup={setGroup}
+          folders={folders}
+          creation={creation}
+          loading={loading}
+          onClose={() => setView(false)}
+        />
+      )}
+    </form>
+  );
+}
+
+/**
+ * Shared modal shell for viewing and editing text, image, and voice notes.
+ * Renders as a full-screen sheet with sticky header/footer on mobile (< 640px)
+ * and as a centered glass modal on desktop/PC.
+ */
+export default function ViewNote({
+  isOpen,
+  setView,
+  onSubmit,
+  onDelete,
+  loading,
+  noteid,
+  notes,
+  folders = [],
+  userId,
+}) {
+  const selectedNote = notes.find((note) => note.id == noteid);
+  const noteType = selectedNote?.note_type || "text";
   const modalMaxWidth = noteType === "img" ? "max-w-4xl" : "max-w-2xl";
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && selectedNote && (
         <div className="fixed inset-0 z-100 overflow-hidden sm:overflow-y-auto overscroll-contain p-0 sm:p-4 md:p-6 select-none">
           {/* Backdrop mask */}
           <motion.div
@@ -175,60 +245,16 @@ export default function ViewNote({
               transition={{ type: "spring", stiffness: 350, damping: 26 }}
               className={`relative z-10 sm:my-auto w-full h-dvh sm:h-auto ${modalMaxWidth} bg-[#121212] sm:bg-transparent glass-panel rounded-none sm:rounded-3xl p-0 sm:p-6 md:p-7 shadow-2xl border-0 sm:border sm:border-white/10 overflow-hidden sm:overflow-visible`}
             >
-              <form onSubmit={handleSubmit} className="flex flex-col h-full sm:block">
-                {noteType === "img" ? (
-                  <ViewImageNote
-                    id={id}
-                    title={title}
-                    setTitle={setTitle}
-                    content={content}
-                    setContent={setContent}
-                    tags={tags}
-                    setTags={setTags}
-                    sourceUrl={sourceUrl}
-                    creation={creation}
-                    mediaBlob={mediaBlob}
-                    imageError={imageError}
-                    setImageError={setImageError}
-                    loading={loading}
-                    onClose={() => setView(false)}
-                    onDelete={onDelete}
-                  />
-                ) : noteType === "voice" ? (
-                  <ViewVoiceNote
-                    title={title}
-                    setTitle={setTitle}
-                    content={content}
-                    setContent={setContent}
-                    tags={tags}
-                    setTags={setTags}
-                    sourceUrl={sourceUrl}
-                    creation={creation}
-                    mediaBlob={mediaBlob}
-                    audioError={audioError}
-                    setAudioError={setAudioError}
-                    loading={loading}
-                    onClose={() => setView(false)}
-                  />
-                ) : (
-                  <ViewTextNote
-                    title={title}
-                    setTitle={setTitle}
-                    content={content}
-                    setContent={setContent}
-                    tags={tags}
-                    setTags={setTags}
-                    sourceUrl={sourceUrl}
-                    setSourceUrl={setSourceUrl}
-                    group={group}
-                    setGroup={setGroup}
-                    folders={folders}
-                    creation={creation}
-                    loading={loading}
-                    onClose={() => setView(false)}
-                  />
-                )}
-              </form>
+              <ViewNoteContent
+                key={selectedNote.id}
+                selectedNote={selectedNote}
+                setView={setView}
+                onSubmit={onSubmit}
+                onDelete={onDelete}
+                loading={loading}
+                folders={folders}
+                userId={userId}
+              />
             </motion.div>
           </div>
         </div>

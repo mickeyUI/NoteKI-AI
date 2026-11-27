@@ -92,6 +92,14 @@ function MiniLinkPreview({ url }) {
 }
 
 /**
+ * Return a persisted media URL only if it is not a stale session-only blob: URL.
+ */
+function getSafeMediaUrl(url) {
+  if (!url || typeof url !== "string") return null;
+  return url.startsWith("blob:") ? null : url;
+}
+
+/**
  * Renders a single note card (Voice, Image, or Text) in the NotesFeed grid.
  */
 export default function NoteCards({
@@ -104,9 +112,9 @@ export default function NoteCards({
   setNoteViewId,
   setNoteViewOpen,
 }) {
-  const [imgSrc, setImgSrc] = useState(note.source_url || null);
-  const [audioSrc, setAudioSrc] = useState(
-    note.note_type === "voice" ? note.source_url || null : null
+  const [imgSrc, setImgSrc] = useState(() => getSafeMediaUrl(note.source_url));
+  const [audioSrc, setAudioSrc] = useState(() =>
+    note.note_type === "voice" ? getSafeMediaUrl(note.source_url) : null
   );
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -132,7 +140,7 @@ export default function NoteCards({
       blobUrlRef.current = freshUrl;
       setImgSrc(freshUrl);
     } else {
-      setImgSrc(note.source_url || null);
+      setImgSrc(getSafeMediaUrl(note.source_url));
     }
 
     return () => {
@@ -167,7 +175,7 @@ export default function NoteCards({
       audioBlobUrlRef.current = freshUrl;
       setAudioSrc(freshUrl);
     } else {
-      setAudioSrc(note.source_url || null);
+      setAudioSrc(getSafeMediaUrl(note.source_url));
     }
 
     return () => {
