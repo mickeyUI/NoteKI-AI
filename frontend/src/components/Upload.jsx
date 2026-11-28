@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, Plus, Loader2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { toast } from "sonner";
-import ComboBox from "./ComboBox";
+import { CollectionAndTagsRow } from "./ViewNoteShared";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Upload({
@@ -175,21 +175,13 @@ export default function Upload({
             />
           </div>
 
-          <ComboBox
+          <CollectionAndTagsRow
             folders={folders}
-            folder={collection}
-            setFolder={setCollection}
+            group={collection}
+            setGroup={setCollection}
+            tags={tags}
+            setTags={setTags}
           />
-
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
-              placeholder="Tags e.g. frontend, react, tips"
-            />
-          </div>
 
           <div className="space-y-2"></div>
 

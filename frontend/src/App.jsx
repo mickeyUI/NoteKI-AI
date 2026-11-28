@@ -477,7 +477,8 @@ export default function App() {
             content: pendingNote.content,
             tags: pendingNote.tags,
             source_url: pendingNote.source_url || "",
-            note_type: "text",
+            // Preserve the original note_type (e.g. "link") instead of hardcoding "text".
+            note_type: pendingNote.note_type || "text",
             group: pendingNote.group,
           });
 
@@ -998,11 +999,18 @@ export default function App() {
       setViewLoading(true);
       const newNote = await api.editNote(noteData);
       if (newNote && newNote.id) {
+        // Preserve the existing local mediaBlob so offline image/voice playback
+        // keeps working after an edit — the backend response never carries binary media.
+        const existingNote = notes.find((n) => n.id == newNote.id);
+        const withBlob = {
+          ...newNote,
+          mediaBlob: existingNote?.mediaBlob ?? null,
+        };
         const modified = notes.filter((note) => note.id != newNote.id);
-        setNotes([newNote, ...modified]);
+        setNotes([withBlob, ...modified]);
         try {
           await updateNote(
-            { ...newNote, user_id: currentUserId, syncStatus: "synced" },
+            { ...withBlob, user_id: currentUserId, syncStatus: "synced" },
             currentUserId,
           );
         } catch (dbErr) {

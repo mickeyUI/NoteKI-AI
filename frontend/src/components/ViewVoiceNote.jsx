@@ -177,7 +177,7 @@ export default function ViewVoiceNote({
   const formatParts = [formatType, formatSize].filter(Boolean);
 
   return (
-    <div className="flex flex-col h-full sm:block sm:space-y-4">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
       <div className="shrink-0 sticky sm:static top-0 z-20 flex items-center justify-between px-4 py-3 sm:px-0 sm:py-0 sm:pb-3 bg-[#121212]/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none border-b border-white/10">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -220,8 +220,8 @@ export default function ViewVoiceNote({
         </button>
       </div>
 
-      {/* Scrollable Body on Mobile, Standard Flow on PC */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 sm:p-0 sm:overflow-visible space-y-4">
+      {/* Scrollable Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4 sm:px-1 sm:py-4 space-y-4">
         {/* Title */}
         <div className="space-y-1.5">
           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">

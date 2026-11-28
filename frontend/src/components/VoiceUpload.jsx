@@ -13,7 +13,7 @@ import {
 import { supabase } from "../supabaseClient";
 import { api } from "../services/api";
 import { toast } from "sonner";
-import ComboBox from "./ComboBox";
+import { CollectionAndTagsRow } from "./ViewNoteShared";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function VoiceUpload({
@@ -475,23 +475,14 @@ export default function VoiceUpload({
               />
             </div>
 
-            {/* Folder Collection */}
-            <ComboBox
+            {/* Collection & Tags */}
+            <CollectionAndTagsRow
               folders={folders}
-              folder={collection}
-              setFolder={setCollection}
+              group={collection}
+              setGroup={setCollection}
+              tags={tags}
+              setTags={setTags}
             />
-
-            {/* Tags */}
-            <div>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
-                placeholder="Tags e.g. voice, meeting, idea"
-              />
-            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-4 pt-2">

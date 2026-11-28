@@ -29,7 +29,7 @@ export default function ViewLinkNote({
   );
 
   return (
-    <div className="flex flex-col h-full sm:block sm:space-y-4">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
       <div className="shrink-0 sticky sm:static top-0 z-20 flex items-center justify-between px-4 py-3 sm:px-0 sm:py-0 sm:pb-3 bg-[#121212]/95 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none border-b border-white/10">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -62,8 +62,8 @@ export default function ViewLinkNote({
         </button>
       </div>
 
-      {/* Scrollable Body on Mobile, Standard Flow on PC */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 sm:p-0 sm:overflow-visible space-y-4">
+      {/* Scrollable Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-4 sm:px-1 sm:py-4 space-y-4">
         {/* Mobile Type Badge */}
         <div className="flex sm:hidden items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/15 border border-purple-500/25 text-[11px] font-medium text-purple-200">

@@ -1,16 +1,20 @@
 import { useState } from "react";
-import { Plus, X, Sparkles, Loader2 } from "lucide-react";
+import { Plus, X, Sparkles, Loader2, Folder, Tag } from "lucide-react";
+
+export const MAX_TAGS_PER_NOTE = 3;
+export const MAX_TAG_LENGTH = 15;
 
 /**
- * Parse a comma- or space-separated tags string into a deduplicated array of clean tag names.
+ * Parse a comma- or space-separated tags string into a deduplicated array of
+ * clean tag names, clamped to MAX_TAG_LENGTH characters and MAX_TAGS_PER_NOTE items.
  */
 export function parseTagList(tagsStr) {
   if (!tagsStr || typeof tagsStr !== "string") return [];
   const cleaned = tagsStr
     .split(/[, ]+/)
-    .map((t) => t.replace(/^#+/, "").trim())
+    .map((t) => t.replace(/^#+/, "").trim().slice(0, MAX_TAG_LENGTH))
     .filter(Boolean);
-  return Array.from(new Set(cleaned));
+  return Array.from(new Set(cleaned)).slice(0, MAX_TAGS_PER_NOTE);
 }
 
 /**
@@ -67,12 +71,16 @@ export function TagChipsEditor({ tags, setTags, addLabel = "Add tag", compact = 
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const tagList = parseTagList(tags);
+  const atLimit = tagList.length >= MAX_TAGS_PER_NOTE;
 
-  // Add one or more tags entered by the user into the comma-separated tags string.
+  // Add one or more tags entered by the user into the comma-separated tags string (up to MAX_TAGS_PER_NOTE).
   const commitTag = () => {
     const incoming = parseTagList(draft);
-    if (incoming.length > 0) {
-      const merged = Array.from(new Set([...tagList, ...incoming]));
+    if (incoming.length > 0 && !atLimit) {
+      const merged = Array.from(new Set([...tagList, ...incoming])).slice(
+        0,
+        MAX_TAGS_PER_NOTE,
+      );
       setTags(merged.join(","));
     }
     setDraft("");
@@ -104,12 +112,13 @@ export function TagChipsEditor({ tags, setTags, addLabel = "Add tag", compact = 
         </span>
       ))}
 
-      {adding ? (
+      {adding && !atLimit ? (
         <input
           type="text"
           value={draft}
+          maxLength={MAX_TAG_LENGTH}
           autoFocus
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => setDraft(e.target.value.slice(0, MAX_TAG_LENGTH))}
           onBlur={commitTag}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === ",") {
@@ -121,20 +130,68 @@ export function TagChipsEditor({ tags, setTags, addLabel = "Add tag", compact = 
               setAdding(false);
             }
           }}
-          placeholder="tag name..."
+          placeholder={`max ${MAX_TAG_LENGTH} chars...`}
           className="glass-input px-2.5 py-1 text-xs text-white rounded-lg w-28 focus:outline-none"
         />
-      ) : (
+      ) : !atLimit ? (
         <button
           type="button"
           onClick={() => setAdding(true)}
           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-white/15 bg-white/[0.02] hover:bg-white/5 text-xs font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
-          title="Add tag"
+          title={`Add tag (${tagList.length}/${MAX_TAGS_PER_NOTE})`}
         >
           <Plus className="w-3 h-3" />
           {!compact && <span>{addLabel}</span>}
         </button>
-      )}
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Two-column collection selector and interactive tag chips row shared across
+ * note creation and view modals.
+ */
+export function CollectionAndTagsRow({
+  folders = [],
+  group,
+  setGroup,
+  tags,
+  setTags,
+}) {
+  const folderOptions = Array.from(
+    new Set(["none", ...(Array.isArray(folders) ? folders : []), ...(group ? [group] : [])]),
+  );
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 min-w-0">
+        <div className="flex items-center gap-2 text-xs text-slate-400 shrink-0">
+          <Folder className="w-4 h-4 text-slate-300" />
+          <span>collection</span>
+        </div>
+        <select
+          value={group || "none"}
+          onChange={(e) => setGroup(e.target.value)}
+          className="min-w-0 flex-1 max-w-[150px] bg-[#1a1a1a] border border-white/10 text-slate-200 text-xs font-medium rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer truncate"
+        >
+          {folderOptions.map((item) => (
+            <option key={item} value={item} className="bg-[#1a1a1a] text-white">
+              {item === "none" ? "No collection" : item}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/10 min-w-0">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
+          <Tag className="w-3.5 h-3.5 text-slate-300" />
+          <span>Tags</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <TagChipsEditor tags={tags} setTags={setTags} compact />
+        </div>
+      </div>
     </div>
   );
 }

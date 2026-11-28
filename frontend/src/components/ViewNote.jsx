@@ -102,7 +102,8 @@ function ViewNoteContent({
 
   // Submit edited note fields while preserving persisted remote media URLs.
   const submitChanges = useCallback(() => {
-    if (!title || (!content && noteType !== "img")) return;
+    // Links have optional commentary content, so only require content for text and voice notes.
+    if (!title || (!content && noteType !== "img" && noteType !== "link")) return;
 
     const tagArray = parseTagList(tags);
     const originalSource =
@@ -147,7 +148,7 @@ function ViewNoteContent({
   }, [setView, submitChanges]);
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full sm:block">
+    <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
       {noteType === "img" ? (
         <ViewImageNote
           id={id}
@@ -221,8 +222,8 @@ function ViewNoteContent({
 
 /**
  * Shared modal shell for viewing and editing text, link, image, and voice notes.
- * Renders as a full-screen sheet with sticky header/footer on mobile (< 640px)
- * and as a centered glass modal on desktop/PC.
+ * Renders as a full-screen sheet on mobile (< 640px) and shrinks to fit content
+ * up to full viewport height minus top/bottom bezel spacing on desktop.
  */
 export default function ViewNote({
   isOpen,
@@ -242,7 +243,7 @@ export default function ViewNote({
   return (
     <AnimatePresence>
       {isOpen && selectedNote && (
-        <div className="fixed inset-0 z-100 overflow-hidden sm:overflow-y-auto overscroll-contain p-0 sm:p-4 md:p-6 select-none">
+        <div className="fixed inset-0 z-100 overflow-hidden p-0 sm:p-4 md:p-8 select-none">
           {/* Backdrop mask */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -253,13 +254,13 @@ export default function ViewNote({
             onClick={() => setView(false)}
           />
 
-          <div className="flex h-full sm:h-auto sm:min-h-full items-stretch sm:items-start lg:items-center justify-center">
+          <div className="flex h-full items-center justify-center">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ type: "spring", stiffness: 350, damping: 26 }}
-              className={`relative z-10 sm:my-auto w-full h-dvh sm:h-auto ${modalMaxWidth} bg-[#121212] sm:bg-transparent glass-panel rounded-none sm:rounded-3xl p-0 sm:p-6 md:p-7 shadow-2xl border-0 sm:border sm:border-white/10 overflow-hidden sm:overflow-visible`}
+              className={`relative z-10 w-full h-dvh sm:h-auto sm:max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-4rem)] ${modalMaxWidth} bg-[#121212] sm:bg-transparent glass-panel rounded-none sm:rounded-3xl p-0 sm:p-6 md:p-7 shadow-2xl border-0 sm:border sm:border-white/10 overflow-hidden flex flex-col`}
             >
               <ViewNoteContent
                 key={selectedNote.id}
