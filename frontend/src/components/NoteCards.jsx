@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Pin, Trash2Icon, Mic, Play, Pause, ExternalLink, Globe } from "lucide-react";
+import { Pin, Trash2Icon, Mic, Play, Pause, ExternalLink, Globe, Link2 } from "lucide-react";
 import { useLinkPreview, isValidHttpUrl } from "../hooks/useLinkPreview";
 
 const WAVEFORM_BARS = [
@@ -28,7 +28,7 @@ function getShortDomain(url) {
 }
 
 /**
- * Compact horizontal link preview strip rendered inside text note cards that have a source URL.
+ * Compact horizontal link preview strip rendered inside dedicated link cards.
  */
 function MiniLinkPreview({ url }) {
   const [failedImageUrl, setFailedImageUrl] = useState(null);
@@ -100,7 +100,7 @@ function getSafeMediaUrl(url) {
 }
 
 /**
- * Renders a single note card (Voice, Image, or Text) in the NotesFeed grid.
+ * Renders a single note card (Voice, Image, Link, or Text) in the NotesFeed grid.
  */
 export default function NoteCards({
   note,
@@ -237,11 +237,7 @@ export default function NoteCards({
       : [];
 
   const progressRatio = duration > 0 ? currentTime / duration : 0;
-  const textSourceUrl = note.source_url || note.sourceUrl || "";
-  const hasTextLink =
-    note.note_type !== "voice" &&
-    note.note_type !== "img" &&
-    isValidHttpUrl(textSourceUrl);
+  const linkSourceUrl = note.source_url || note.sourceUrl || "";
 
   return (
     <div
@@ -377,19 +373,29 @@ export default function NoteCards({
             </div>
           </div>
         </div>
+      ) : note.note_type === "link" ? (
+        <div className="flex-1 flex flex-col justify-start pt-1.5 min-h-0">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Link2 className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+            <h3 className="text-sm font-bold text-white truncate">
+              {note.title}
+            </h3>
+          </div>
+          {note.content && (
+            <p className="text-xs internal leading-relaxed opacity-80 line-clamp-2">
+              {note.content}
+            </p>
+          )}
+          {isValidHttpUrl(linkSourceUrl) && <MiniLinkPreview url={linkSourceUrl} />}
+        </div>
       ) : (
         <div className="flex-1 flex flex-col justify-start pt-2 min-h-0">
           <h3 className="text-base font-bold internal truncate mb-1.5">
             {note.title}
           </h3>
-          <p
-            className={`text-xs internal leading-relaxed opacity-80 ${
-              hasTextLink ? "line-clamp-2" : "line-clamp-3"
-            }`}
-          >
+          <p className="text-xs internal leading-relaxed opacity-80 line-clamp-3">
             {note.content}
           </p>
-          {hasTextLink && <MiniLinkPreview url={textSourceUrl} />}
         </div>
       )}
 

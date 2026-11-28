@@ -9,6 +9,7 @@ import {
   Plus,
   MicAudioLines,
   AlertTriangle,
+  Link2,
 } from "lucide-react";
 import NoteCards from "./NoteCards";
 import GlassFolder from "./glassFolderCards";
@@ -48,6 +49,7 @@ export default function NotesFeed({
   setNoteViewOpen,
   openUpload,
   openVoice,
+  openLink,
   openFolder,
   unGroupNotes,
   _grouping,
@@ -139,10 +141,12 @@ export default function NotesFeed({
     const title = (note?.title || "").toLowerCase();
     const content = (note?.content || "").toLowerCase();
     const tags = (note?.tags || "").toLowerCase();
+    const sourceUrl = (note?.source_url || "").toLowerCase();
 
     return (
       title.includes(rawQuery) ||
       content.includes(rawQuery) ||
+      sourceUrl.includes(rawQuery) ||
       tags.includes(rawQuery) ||
       tags.includes(cleanQuery)
     );
@@ -256,6 +260,18 @@ export default function NotesFeed({
             >
               <MicAudioLines className="w-4 h-4 text-slate-300" />
               <span>Audio</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (openLink) openLink(true);
+              }}
+              className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full bg-[#242424] hover:bg-[#2f2f2f] border border-white/10 text-xs font-medium text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+              title="Save Link"
+            >
+              <Link2 className="w-4 h-4 text-slate-300" />
+              <span>Add Link</span>
             </button>
           </div>
         </div>
@@ -477,6 +493,7 @@ export default function NotesFeed({
                     { id: "voice", label: "Voice" },
                     { id: "img", label: "Images" },
                     { id: "text", label: "Text" },
+                    { id: "link", label: "Links" },
                   ].map((tab) => {
                     const active = noteTypeFilter === tab.id;
                     return (

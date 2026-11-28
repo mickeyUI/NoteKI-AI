@@ -1,11 +1,9 @@
-import { ArrowLeft, X, Edit, FileText, Folder, Tag, Link2, ExternalLink, Calendar } from "lucide-react";
-import LinkPreviewCard from "./LinkPreviewCard";
-import { isValidHttpUrl } from "../hooks/useLinkPreview";
+import { ArrowLeft, X, Edit, FileText, Folder, Tag, Calendar } from "lucide-react";
 import { TagChipsEditor, NoteModalFooter, formatNoteDate } from "./ViewNoteShared";
 
 /**
  * Text note viewer/editor matching the structured single-column layout with
- * collection selector, tag chips, source URL, and embedded source preview.
+ * collection selector and tag chips.
  * Uses a sticky header/footer full-screen layout on mobile and modal layout on PC.
  */
 export default function ViewTextNote({
@@ -15,8 +13,6 @@ export default function ViewTextNote({
   setContent,
   tags,
   setTags,
-  sourceUrl,
-  setSourceUrl,
   group,
   setGroup,
   folders = [],
@@ -133,42 +129,6 @@ export default function ViewTextNote({
             </div>
           </div>
         </div>
-
-        {/* Source URL Row */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/10">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0">
-            <Link2 className="w-3.5 h-3.5 text-slate-300" />
-            <span>Source URL</span>
-          </div>
-          <input
-            type="url"
-            value={sourceUrl}
-            onChange={(e) => setSourceUrl(e.target.value)}
-            className="flex-1 min-w-0 bg-transparent text-xs sm:text-sm text-slate-200 placeholder-slate-600 focus:outline-none"
-            placeholder="https://..."
-          />
-          {isValidHttpUrl(sourceUrl) && (
-            <a
-              href={sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1 text-slate-400 hover:text-white transition-colors shrink-0"
-              title="Open source URL"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-        </div>
-
-        {/* Embedded Source Preview */}
-        {isValidHttpUrl(sourceUrl) && (
-          <div className="space-y-2 pt-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Source Preview
-            </p>
-            <LinkPreviewCard url={sourceUrl} />
-          </div>
-        )}
 
         {/* Mobile Created Metadata */}
         <div className="flex sm:hidden items-center justify-between text-xs text-slate-400 pt-1">

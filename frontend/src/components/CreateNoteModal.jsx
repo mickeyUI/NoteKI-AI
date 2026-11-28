@@ -13,7 +13,6 @@ export default function CreateNoteModal({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
   const [collection, setCollection] = useState("none");
 
   const handleSubmit = (e) => {
@@ -30,7 +29,6 @@ export default function CreateNoteModal({
       title,
       content,
       tags: tagArray.toString(),
-      source_url: sourceUrl,
       group: collection,
     });
 
@@ -38,7 +36,6 @@ export default function CreateNoteModal({
     setTitle("");
     setContent("");
     setTags("");
-    setSourceUrl("");
     setCollection("none");
   };
 
@@ -120,16 +117,6 @@ export default function CreateNoteModal({
               onChange={(e) => setTags(e.target.value)}
               className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
               placeholder="Tags e.g. frontend, react, tips"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <input
-              type="url"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-              className="glass-input w-full py-3 px-4 text-white placeholder-white/20 rounded-xl text-sm"
-              placeholder="Source eg:https://example.com/docs"
             />
           </div>
 

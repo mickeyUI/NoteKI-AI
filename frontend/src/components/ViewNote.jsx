@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ViewTextNote from "./ViewTextNote";
 import ViewImageNote from "./ViewImageNote";
 import ViewVoiceNote from "./ViewVoiceNote";
+import ViewLinkNote from "./ViewLinkNote";
 import { parseTagList } from "./ViewNoteShared";
 
 /**
@@ -181,8 +182,8 @@ function ViewNoteContent({
           loading={loading}
           onClose={() => setView(false)}
         />
-      ) : (
-        <ViewTextNote
+      ) : noteType === "link" ? (
+        <ViewLinkNote
           title={title}
           setTitle={setTitle}
           content={content}
@@ -198,13 +199,28 @@ function ViewNoteContent({
           loading={loading}
           onClose={() => setView(false)}
         />
+      ) : (
+        <ViewTextNote
+          title={title}
+          setTitle={setTitle}
+          content={content}
+          setContent={setContent}
+          tags={tags}
+          setTags={setTags}
+          group={group}
+          setGroup={setGroup}
+          folders={folders}
+          creation={creation}
+          loading={loading}
+          onClose={() => setView(false)}
+        />
       )}
     </form>
   );
 }
 
 /**
- * Shared modal shell for viewing and editing text, image, and voice notes.
+ * Shared modal shell for viewing and editing text, link, image, and voice notes.
  * Renders as a full-screen sheet with sticky header/footer on mobile (< 640px)
  * and as a centered glass modal on desktop/PC.
  */

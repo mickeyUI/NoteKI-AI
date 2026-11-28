@@ -109,15 +109,25 @@ async def preview_link(
     except BlockedAddress as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
+# Build a unified text payload for vector embeddings across text and link notes.
+def build_embedding_text(title: str | None, content: str | None, note_type: str | None = None, source_url: str | None = None) -> str:
+    parts = []
+    if title:
+        parts.append(f"Title: {title}")
+    if note_type == "link" and source_url:
+        parts.append(f"URL: {source_url}")
+    if content:
+        parts.append(f"content: {content}")
+    return ", ".join(parts) if parts else ""
+
+
 #letter for onboarding and stuff
 # @app.post("/Register")
 # def RegisterUser(register: Register, db = Depends(get_db)):
 
 @app.post("/AddNote")
 async def AddNote(note: CreateNote, userID = Depends(get_current_user), db = Depends(get_db)):
-    toEmbed = note.content
-    if note.title: 
-        toEmbed = f'Title: {note.title}, content: {note.content}'
+    toEmbed = build_embedding_text(note.title, note.content, note.note_type, note.source_url)
     embeded = get_embedding(toEmbed)
     if not embeded:
         raise HTTPException(status_code=502, detail="Failed to generate embedding for note. Check GEMINI_API_KEY configuration.")
@@ -283,9 +293,7 @@ def UpdateNote(newNote: EditNote, userID = Depends(get_current_user), db = Depen
     note.source_url = newNote.source_url
     if newNote.group is not None:
         note.group = newNote.group
-    toEmbed = newNote.content
-    if newNote.title: 
-        toEmbed = f'Title: {newNote.title}, content: {newNote.content}'
+    toEmbed = build_embedding_text(newNote.title, newNote.content, note.note_type, newNote.source_url)
     new_embedding = get_embedding(toEmbed)
     if new_embedding:
         note.embedding = new_embedding

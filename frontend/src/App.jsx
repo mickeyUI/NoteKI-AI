@@ -8,6 +8,7 @@ import React, {
 import { api, authorizedFetch } from "./services/api";
 import AuthPage from "./components/AuthPage";
 import CreateNoteModal from "./components/CreateNoteModal";
+import CreateLinkModal from "./components/CreateLinkModal";
 import Sidebar from "./components/Sidebar";
 import NotesFeed from "./components/NotesFeed";
 import AIAnswerPanel from "./components/AIAnswerPanel";
@@ -64,6 +65,7 @@ export default function App() {
   const [noteViewId, setNoteViewId] = useState("");
   const [isUploadOpen, setUploadOpen] = useState(false);
   const [isVoiceOpen, setVoiceOpen] = useState(false);
+  const [isLinkModalOpen, setLinkModalOpen] = useState(false);
   const [isFolderOpen, setFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
@@ -801,6 +803,7 @@ export default function App() {
     const currentUserId = session?.user?.id || getOfflineAuth()?.id;
     if (!navigator.onLine || noteData.isOffline) {
       const isVoice = noteData.note_type === "voice";
+      const isLink = noteData.note_type === "link";
       const audioBlob = noteData.audioFile || noteData.mediaBlob || null;
       let playableSourceUrl = noteData.source_url || "";
       if (audioBlob instanceof Blob) {
@@ -833,7 +836,11 @@ export default function App() {
         await updateNote(offlineNote, currentUserId);
         setNotes((prev) => [offlineNote, ...prev]);
         toast.success(
-          isVoice ? "Voice note saved offline" : "Note saved offline",
+          isVoice
+            ? "Voice note saved offline"
+            : isLink
+              ? "Link saved offline"
+              : "Note saved offline",
         );
       } catch (dbErr) {
         toast.error("Failed to save note offline");
@@ -842,6 +849,7 @@ export default function App() {
         setNoteCreationLoading(false);
         setIsNoteModalOpen(false);
         setVoiceOpen(false);
+        setLinkModalOpen(false);
       }
       return;
     }
@@ -849,6 +857,7 @@ export default function App() {
     setNoteCreationLoading(true);
     try {
       const isVoice = noteData.note_type === "voice";
+      const isLink = noteData.note_type === "link";
       const audioBlob = noteData.audioFile || noteData.mediaBlob || null;
       const newNote = await api.addNote(noteData);
       if (newNote && newNote.id) {
@@ -873,7 +882,7 @@ export default function App() {
           }
         });
       }
-      toast.success("Note Created");
+      toast.success(noteData.note_type === "link" ? "Link Saved" : "Note Created");
     } catch (err) {
       toast.error("Try Again");
       console.log("Failed to create note: " + err.message);
@@ -881,6 +890,7 @@ export default function App() {
       setNoteCreationLoading(false);
       setIsNoteModalOpen(false);
       setVoiceOpen(false);
+      setLinkModalOpen(false);
     }
   };
 
@@ -1440,6 +1450,7 @@ export default function App() {
               setNoteViewOpen={setNoteViewOpen}
               openUpload={setUploadOpen}
               openVoice={setVoiceOpen}
+              openLink={setLinkModalOpen}
               openFolder={openFolder}
               unGroupNotes={handleUngrouping}
               grouping={grouping}
@@ -1478,6 +1489,13 @@ export default function App() {
       <CreateNoteModal
         isOpen={isNoteModalOpen}
         onClose={() => setIsNoteModalOpen(false)}
+        onSubmit={handleCreateNote}
+        loading={noteCreationLoading}
+        folders={folder}
+      />
+      <CreateLinkModal
+        isOpen={isLinkModalOpen}
+        onClose={() => setLinkModalOpen(false)}
         onSubmit={handleCreateNote}
         loading={noteCreationLoading}
         folders={folder}
